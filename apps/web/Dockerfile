@@ -1,0 +1,31 @@
+# Build from the monorepo root: docker build -f apps/web/Dockerfile -t relatax-web .
+FROM node:24-alpine AS base
+RUN corepack enable
+
+# ---- Prune the monorepo down to just what @relatax/web needs ----
+FROM base AS pruner
+WORKDIR /app
+COPY . .
+RUN npx turbo prune @relatax/web --docker
+
+# ---- Install deps for the pruned subset, then build ----
+FROM base AS installer
+WORKDIR /app
+COPY --from=pruner /app/out/json/ .
+RUN pnpm install --frozen-lockfile
+COPY --from=pruner /app/out/full/ .
+COPY tsconfig.base.json ./tsconfig.base.json
+RUN npx turbo run build --filter=@relatax/web
+
+# ---- Slim runtime image (Next.js standalone output) ----
+FROM base AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
+COPY --from=installer /app/apps/web/.next/standalone ./
+COPY --from=installer /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=installer /app/apps/web/public ./apps/web/public
+USER nextjs
+EXPOSE 3000
+ENV PORT=3000
+CMD ["node", "apps/web/server.js"]

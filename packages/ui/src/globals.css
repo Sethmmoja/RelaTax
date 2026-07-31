@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts are loaded via next/font/google in each app's root layout (self-hosted,
+   no external request) — do not add a Google Fonts @import here, it would
+   duplicate the fonts and add a render-blocking third-party network fetch. */
+
+/*
+  RelaTax brand palette, matched to the marketing site (relatax.lovable.app):
+  a warm coral/terracotta primary ("Rela") against warm ink text ("Tax") and
+  a cream ledger-paper background. --primary carries the brand hue in BOTH
+  light and dark mode — it must never fall back to a neutral ink color, or
+  the brand disappears in whichever mode isn't dark mode.
+*/
+:root {
+  --background: 98.5% 0.005 70;
+  --foreground: 18% 0.03 50;
+  --card: 100% 0 0;
+  --card-foreground: 18% 0.03 50;
+  --primary: 68% 0.16 40;
+  --primary-foreground: 99% 0.005 70;
+  --primary-glow: 78% 0.14 50;
+  --secondary: 22% 0.03 50;
+  --secondary-foreground: 98.5% 0.005 70;
+  --accent: 94% 0.04 55;
+  --accent-foreground: 22% 0.03 50;
+  --muted: 96% 0.01 60;
+  --muted-foreground: 48% 0.02 50;
+  --border: 90% 0.015 60;
+  --destructive: 57.7% 0.245 27.325;
+  --destructive-foreground: 99% 0.005 70;
+
+  --radius: 0.25rem;
+  --shadow-soft: 0 1px 2px oklab(18% 0.02 50 / 0.06), 0 2px 6px oklab(18% 0.02 50 / 0.05);
+  --shadow-elegant: 0 8px 30px -10px oklab(18% 0.02 50 / 0.22), 0 2px 8px oklab(18% 0.02 50 / 0.08);
+  --gradient-hero: linear-gradient(135deg, oklch(99% 0.01 70) 0%, oklch(95% 0.05 55) 100%);
+  --gradient-primary: linear-gradient(135deg, oklch(68% 0.16 40), oklch(78% 0.14 50));
+}
+
+.dark {
+  --background: 14% 0.02 50;
+  --foreground: 96% 0.01 70;
+  --card: 18% 0.024 50;
+  --card-foreground: 96% 0.01 70;
+  --primary: 72% 0.15 40;
+  --primary-foreground: 14% 0.02 50;
+  --primary-glow: 80% 0.13 48;
+  --secondary: 70% 0.1 55;
+  --secondary-foreground: 16% 0.02 55;
+  --accent: 24% 0.03 50;
+  --accent-foreground: 94% 0.012 70;
+  --muted: 20% 0.02 50;
+  --muted-foreground: 65% 0.02 50;
+  --border: 28% 0.025 50;
+  --destructive: 60% 0.18 25;
+  --destructive-foreground: 97% 0.01 70;
+
+  --shadow-soft: 0 1px 2px oklab(0% 0 0 / 0.4), 0 2px 6px oklab(0% 0 0 / 0.3);
+  --shadow-elegant: 0 20px 50px -20px oklab(0% 0 0 / 0.6);
+  --gradient-hero: linear-gradient(180deg, oklch(14% 0.02 50) 0%, oklch(19% 0.026 48) 100%);
+  --gradient-primary: linear-gradient(135deg, oklch(72% 0.15 40), oklch(64% 0.13 42));
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif font-normal;
+  }
+  /* Financial figures render in tabular mono, like a printed statement —
+     applied via .font-mono / .tabular-figures utility, not globally, so
+     prose text stays in the body face. */
+  .tabular-figures {
+    @apply font-mono tabular-nums;
+  }
+}
+
+/* Ruled paper — a literal ledger line, used sparingly as a structural
+   device (section dividers, statement rows), never as decoration. */
+.ledger-rule {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 27px,
+    oklch(var(--border) / 0.7) 27px,
+    oklch(var(--border) / 0.7) 28px
+  );
+}
+
+/* "Ledger in Motion" cinematic depth stage — pure CSS 3D, no new colors or
+   fonts. A perspective camera that scroll-scrubbed transforms move things
+   through, so scenes read as paper layers in real depth rather than a flat
+   fade. Kept as structural utilities, not brand tokens. */
+.perspective-stage {
+  perspective: 1400px;
+  perspective-origin: 50% 35%;
+}
+.preserve-3d {
+  transform-style: preserve-3d;
+}

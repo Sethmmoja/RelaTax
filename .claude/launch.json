@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "relatax-web",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-lc", "export NVM_DIR=$HOME/.nvm && . $NVM_DIR/nvm.sh && pnpm --filter @relatax/web dev"],
+      "port": 3000
+    },
+    {
+      "name": "relatax-api",
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["-lc", "export NVM_DIR=$HOME/.nvm && . $NVM_DIR/nvm.sh && pnpm --filter @relatax/api dev"],
+      "port": 4000
+    }
+  ]
+}

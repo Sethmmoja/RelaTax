@@ -1,0 +1,821 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+// ---------------------------------------------------------------------------
+// Identity & RBAC
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  phone        String?  @unique
+  passwordHash String
+  name         String
+  isStaff      Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  emailVerifiedAt         DateTime?
+  emailVerificationToken  String?   @unique
+  emailVerificationExpiresAt DateTime?
+  passwordResetToken      String?   @unique
+  passwordResetExpiresAt  DateTime?
+  mfaEnabled              Boolean   @default(false)
+  googleId                String?   @unique
+
+  businessMemberships BusinessMember[]
+  roleAssignments     RoleAssignment[]
+  businessRequests    BusinessRequest[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  whatsAppSession     WhatsAppSession?
+  sessions            UserSession[]
+  staffAssignments    StaffBusinessAssignment[]
+  invoicesCreated        Invoice[]
+  invoiceRequestsMade    InvoiceRequest[] @relation("InvoiceRequestsMade")
+  invoiceRequestsReviewed InvoiceRequest[] @relation("InvoiceRequestsReviewed")
+
+  @@map("users")
+}
+
+model UserSession {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  lastUsedAt       DateTime  @default(now())
+  revokedAt        DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_sessions")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  assignments RoleAssignment[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id     String @id @default(cuid())
+  action String @unique
+
+  roles RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model RoleAssignment {
+  id     String @id @default(cuid())
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("role_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Businesses
+// ---------------------------------------------------------------------------
+
+model Business {
+  id         String         @id @default(cuid())
+  name       String
+  logoUrl    String?
+  brandColor String?
+  status     BusinessStatus @default(PENDING)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  members               BusinessMember[]
+  documents              Document[]
+  reportPeriods          ReportPeriod[]
+  taxRecords             TaxRecord[]
+  invoices               Invoice[]
+  invoiceRequests        InvoiceRequest[]
+  receipts               Receipt[]
+  notifications          Notification[]
+  requests               BusinessRequest[]
+  quickBooksConnection   QuickBooksConnection?
+  cloudDriveConnection   CloudDriveConnection?
+  whatsAppSessions       WhatsAppSession[]
+  knowledgeBaseChunks    KnowledgeBaseChunk[]
+  syncLogs               SyncLog[]
+  staffAssignments       StaffBusinessAssignment[]
+  employees              Employee[]
+  payrollRuns            PayrollRun[]
+  products               Product[]
+  sales                  Sale[]
+  mpesaConnection        MpesaConnection?
+
+  @@map("businesses")
+}
+
+enum BusinessStatus {
+  PENDING
+  ACTIVE
+  ARCHIVED
+}
+
+model BusinessMember {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  isOwner    Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+  @@map("business_members")
+}
+
+/**
+ * Which non-Super-Admin staff members may act on which businesses. Super
+ * Admin bypasses this entirely (see BusinessMemberGuard) and needs no rows
+ * here; this table only restricts everyone else (Admin/Finance/Accountant/
+ * Tax Consultant/Support/Read Only).
+ */
+model StaffBusinessAssignment {
+  id         String   @id @default(cuid())
+  userId     String
+  businessId String
+  assignedAt DateTime @default(now())
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, businessId])
+  @@map("staff_business_assignments")
+}
+
+/** A public marketing-site "Contact us" submission — no account required. */
+model ContactInquiry {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  company   String
+  sector    String
+  services  String[]
+  message   String?
+  createdAt DateTime @default(now())
+
+  @@map("contact_inquiries")
+}
+
+model BusinessRequest {
+  id               String                @id @default(cuid())
+  requestedByUserId String
+  notes            String?
+  status           BusinessRequestStatus @default(PENDING)
+  createdBusinessId String?              @unique
+  createdAt        DateTime              @default(now())
+  resolvedAt       DateTime?
+
+  requestedBy    User      @relation(fields: [requestedByUserId], references: [id])
+  createdBusiness Business? @relation(fields: [createdBusinessId], references: [id])
+
+  @@map("business_requests")
+}
+
+enum BusinessRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ---------------------------------------------------------------------------
+// Documents, Reports, Taxes
+// ---------------------------------------------------------------------------
+
+model Document {
+  id           String           @id @default(cuid())
+  businessId   String
+  category     DocumentCategory
+  reportType   ReportType?
+  periodId     String?
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  storageKey   String
+  uploadedById String
+  externalFileId String?        @unique
+  createdAt    DateTime         @default(now())
+
+  business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  period   ReportPeriod? @relation(fields: [periodId], references: [id])
+
+  financialReport  FinancialReport?
+  invoice          Invoice?
+  receipt          Receipt?
+  employeeDocument EmployeeDocument?
+  payslip          Payslip?
+  sale             Sale?
+  payrollRun       PayrollRun?
+
+  @@map("documents")
+}
+
+enum DocumentCategory {
+  FINANCIAL_STATEMENT
+  INVOICE
+  RECEIPT
+  EXCEL
+  PDF
+  DRAFT
+  TAX_REPORT
+  SUPPORTING
+  EMPLOYEE_RECORD
+  PAYSLIP
+  PAYROLL_REPORT
+  OTHER
+}
+
+model ReportPeriod {
+  id         String   @id @default(cuid())
+  businessId String
+  label      String
+  startDate  DateTime
+  endDate    DateTime
+  createdAt  DateTime @default(now())
+
+  business Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reports  FinancialReport[]
+  taxes    TaxRecord[]
+  documents Document[]
+
+  @@map("report_periods")
+}
+
+model FinancialReport {
+  id         String       @id @default(cuid())
+  periodId   String
+  type       ReportType
+  source     ReportSource @default(MANUAL)
+  documentId String?      @unique
+  createdAt  DateTime     @default(now())
+
+  period   ReportPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  document Document?    @relation(fields: [documentId], references: [id])
+
+  @@map("financial_reports")
+}
+
+enum ReportType {
+  FINANCIAL_STATEMENT
+  PROFIT_AND_LOSS
+  BALANCE_SHEET
+  CASH_FLOW
+  TRIAL_BALANCE
+  VAT
+  PAYE
+  CORPORATION_TAX
+  RECEIPT
+  INVOICE
+  DRAFT
+  CUSTOM
+}
+
+enum ReportSource {
+  QUICKBOOKS
+  MANUAL
+  DRAFT
+}
+
+model TaxRecord {
+  id         String    @id @default(cuid())
+  businessId String
+  periodId   String
+  taxType    TaxType
+  status     TaxStatus @default(DUE)
+  amountDue  Decimal   @default(0)
+  amountPaid Decimal   @default(0)
+  penalty    Decimal   @default(0)
+  dueDate    DateTime
+  createdAt  DateTime  @default(now())
+
+  business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  period   ReportPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+
+  @@map("tax_records")
+}
+
+enum TaxType {
+  VAT
+  PAYE
+  CORPORATION_TAX
+  NSSF
+  SHIF
+  HOUSING_LEVY
+  OTHER
+}
+
+enum TaxStatus {
+  DUE
+  PAID
+  OUTSTANDING
+  PENALTY
+}
+
+/**
+ * A WhatsApp-originated request for a new eTIMS invoice. eTIMS itself requires
+ * the taxpayer's own KRA login (OSCU/VSCU control unit) to generate a
+ * compliant invoice, so there is no automated connector here — a client
+ * sends the three things eTIMS needs (customer KRA PIN, item/service, amount)
+ * over WhatsApp, a Super Admin generates the real invoice in KRA's eTIMS
+ * directly, then records the result back via fulfillRequest, which creates
+ * the Invoice below and delivers it to the client.
+ */
+model InvoiceRequest {
+  id               String               @id @default(cuid())
+  businessId       String
+  requestedByUserId String
+  customerName     String
+  customerKraPin   String?
+  itemDescription  String
+  amount           Decimal
+  currency         String               @default("KES")
+  status           InvoiceRequestStatus @default(PENDING_REVIEW)
+  invoiceId        String?              @unique
+  rejectionReason  String?
+  reviewedById     String?
+  reviewedAt       DateTime?
+  createdAt        DateTime             @default(now())
+
+  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  requestedBy User      @relation("InvoiceRequestsMade", fields: [requestedByUserId], references: [id])
+  reviewedBy  User?     @relation("InvoiceRequestsReviewed", fields: [reviewedById], references: [id])
+  invoice     Invoice?  @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_requests")
+}
+
+enum InvoiceRequestStatus {
+  PENDING_REVIEW
+  IN_PROGRESS
+  FULFILLED
+  REJECTED
+}
+
+model Invoice {
+  id             String        @id @default(cuid())
+  businessId     String
+  customerName   String
+  customerKraPin String?
+  status         InvoiceStatus @default(DRAFT)
+  currency       String        @default("KES")
+  subtotal       Decimal
+  taxTotal       Decimal
+  total          Decimal
+  issuedAt       DateTime?
+  documentId     String?       @unique
+  createdById    String
+  // eTIMS fields, entered manually by the Super Admin off the real
+  // KRA-generated invoice — there is no live KRA API call behind these.
+  kraInvoiceNo   String?
+  cuSerialNumber String?
+  qrCodeUrl      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  business  Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  document  Document?         @relation(fields: [documentId], references: [id])
+  createdBy User              @relation(fields: [createdById], references: [id])
+  lineItems InvoiceLineItem[]
+  request   InvoiceRequest?
+
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  description String
+  quantity    Decimal @default(1)
+  unitPrice   Decimal
+  taxRate     Decimal @default(16)
+  lineTotal   Decimal
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@map("invoice_line_items")
+}
+
+model Receipt {
+  id         String   @id @default(cuid())
+  businessId String
+  documentId String?  @unique
+  amount     Decimal
+  issuedAt   DateTime
+  createdAt  DateTime @default(now())
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  document Document? @relation(fields: [documentId], references: [id])
+
+  @@map("receipts")
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & Audit
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id         String               @id @default(cuid())
+  businessId String?
+  userId     String?
+  type       NotificationType
+  channels   NotificationChannel[]
+  title      String
+  body       String
+  readAt     DateTime?
+  scheduledFor DateTime?
+  createdAt  DateTime             @default(now())
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+enum NotificationType {
+  PAYMENT_REMINDER
+  FILING_REMINDER
+  COMPLETED_WORK
+  NEW_DOCUMENT
+  ANNOUNCEMENT
+}
+
+enum NotificationChannel {
+  PORTAL
+  WHATSAPP
+  EMAIL
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp
+// ---------------------------------------------------------------------------
+
+model WhatsAppSession {
+  id              String   @id @default(cuid())
+  phone           String   @unique
+  userId          String?  @unique
+  activeBusinessId String?
+  state           String   @default("AWAITING_PHONE")
+  context         Json     @default("{}")
+  otpCode         String?
+  otpExpiresAt    DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user           User?     @relation(fields: [userId], references: [id])
+  activeBusiness Business? @relation(fields: [activeBusinessId], references: [id])
+
+  @@map("whatsapp_sessions")
+}
+
+// ---------------------------------------------------------------------------
+// QuickBooks
+// ---------------------------------------------------------------------------
+
+model QuickBooksConnection {
+  id           String    @id @default(cuid())
+  businessId   String    @unique
+  realmId      String
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  syncLogs SyncLog[]
+
+  @@map("quickbooks_connections")
+}
+
+model SyncLog {
+  id               String     @id @default(cuid())
+  businessId       String
+  source           String     @default("quickbooks")
+  status           SyncStatus @default(PENDING)
+  startedAt        DateTime   @default(now())
+  finishedAt       DateTime?
+  recordsUpserted  Int        @default(0)
+  error            String?
+  quickBooksConnId String?
+
+  business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  quickBooksConnection  QuickBooksConnection? @relation(fields: [quickBooksConnId], references: [id])
+
+  @@map("sync_logs")
+}
+
+model CloudDriveConnection {
+  id           String    @id @default(cuid())
+  businessId   String    @unique
+  provider     String
+  folderId     String?
+  folderName   String?
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  lastSyncedAt DateTime?
+  createdAt    DateTime  @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("cloud_drive_connections")
+}
+
+enum SyncStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+}
+
+// ---------------------------------------------------------------------------
+// Employees & Payroll
+// ---------------------------------------------------------------------------
+
+model Employee {
+  id                String         @id @default(cuid())
+  businessId        String
+  name              String
+  email             String
+  kraPin            String?
+  nssfNo            String?
+  shifNo            String?
+  nationalId        String?
+  staffNo           String?
+  bankName          String?
+  bankAccountNumber String?
+  basicSalary       Decimal
+  status            EmployeeStatus @default(ACTIVE)
+  createdAt         DateTime       @default(now())
+
+  business  Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  payslips  Payslip[]
+  documents EmployeeDocument[]
+
+  @@unique([businessId, staffNo])
+  @@map("employees")
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/** Contracts, P9s, ID copies — whatever supporting paperwork the accountant adds for an employee. */
+model EmployeeDocument {
+  id           String   @id @default(cuid())
+  employeeId   String
+  documentId   String   @unique
+  label        String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  document Document @relation(fields: [documentId], references: [id])
+
+  @@map("employee_documents")
+}
+
+model PayrollRun {
+  id               String           @id @default(cuid())
+  businessId       String
+  periodLabel      String
+  status           PayrollRunStatus @default(DRAFT)
+  runById          String
+  runAt            DateTime?
+  reportDocumentId String?          @unique
+  createdAt        DateTime         @default(now())
+
+  business       Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  payslips       Payslip[]
+  reportDocument Document? @relation(fields: [reportDocumentId], references: [id])
+
+  @@map("payroll_runs")
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  CALCULATED
+  APPROVED
+  DISTRIBUTED
+}
+
+model Payslip {
+  id               String    @id @default(cuid())
+  payrollRunId     String
+  employeeId       String
+  grossPay         Decimal
+  nssfTier1        Decimal   @default(0)
+  nssfTier2        Decimal   @default(0)
+  nssf             Decimal
+  shif             Decimal
+  housingLevy      Decimal
+  taxablePay       Decimal   @default(0)
+  payeBeforeRelief Decimal   @default(0)
+  personalRelief   Decimal   @default(0)
+  paye             Decimal
+  otherDeductions  Decimal   @default(0)
+  netPay           Decimal
+  documentId       String?   @unique
+  emailedAt        DateTime?
+  createdAt        DateTime  @default(now())
+
+  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+  document   Document?  @relation(fields: [documentId], references: [id])
+
+  @@map("payslips")
+}
+
+// ---------------------------------------------------------------------------
+// Catalog & POS
+// ---------------------------------------------------------------------------
+
+model Product {
+  id             String        @id @default(cuid())
+  businessId     String
+  name           String
+  sku            String?
+  unitPrice      Decimal
+  taxRate        Decimal       @default(16)
+  quantityOnHand Decimal       @default(0)
+  reorderPoint   Decimal?
+  isService      Boolean       @default(false)
+  status         ProductStatus @default(ACTIVE)
+  createdAt      DateTime      @default(now())
+
+  business       Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  stockMovements StockMovement[]
+  saleLineItems  SaleLineItem[]
+
+  @@unique([businessId, sku])
+  @@map("products")
+}
+
+enum ProductStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+model StockMovement {
+  id        String              @id @default(cuid())
+  productId String
+  delta     Decimal
+  reason    StockMovementReason
+  note      String?
+  createdAt DateTime            @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("stock_movements")
+}
+
+enum StockMovementReason {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+}
+
+model Sale {
+  id                     String            @id @default(cuid())
+  businessId             String
+  customerName           String?
+  customerPhone          String?
+  subtotal               Decimal
+  taxTotal               Decimal
+  total                  Decimal
+  paymentMethod          SalePaymentMethod
+  paymentStatus          SalePaymentStatus @default(PENDING)
+  cashReceived           Decimal?
+  changeGiven            Decimal?
+  mpesaCheckoutRequestId String?           @unique
+  mpesaReceiptNumber     String?
+  soldById               String
+  documentId             String?           @unique
+  createdAt              DateTime          @default(now())
+
+  business  Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  document  Document?      @relation(fields: [documentId], references: [id])
+  lineItems SaleLineItem[]
+
+  @@map("sales")
+}
+
+enum SalePaymentMethod {
+  CASH
+  MPESA
+}
+
+enum SalePaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model SaleLineItem {
+  id          String  @id @default(cuid())
+  saleId      String
+  productId   String?
+  description String
+  quantity    Decimal
+  unitPrice   Decimal
+  taxRate     Decimal
+  lineTotal   Decimal
+
+  sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("sale_line_items")
+}
+
+/** Per-business Daraja app credentials — never returned in full by any GET endpoint. */
+model MpesaConnection {
+  id             String   @id @default(cuid())
+  businessId     String   @unique
+  environment    String   @default("sandbox")
+  shortCode      String
+  consumerKey    String
+  consumerSecret String
+  passkey        String
+  createdAt      DateTime @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("mpesa_connections")
+}
+
+// ---------------------------------------------------------------------------
+// AI / RAG
+// ---------------------------------------------------------------------------
+
+model KnowledgeBaseChunk {
+  id         String                  @id @default(cuid())
+  businessId String?
+  sourceType String
+  sourceRef  String?
+  content    String
+  embedding  Unsupported("vector(1536)")
+  createdAt  DateTime                @default(now())
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@map("knowledge_base_chunks")
+}

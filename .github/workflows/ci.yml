@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.17.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm --filter @relatax/api prisma:generate
+
+      - name: Typecheck, build, test
+        run: pnpm turbo run typecheck build test
+
+      - name: Dependency audit (fails on high/critical)
+        run: pnpm audit --prod --audit-level=high
+
+  # No integration tests need a live DB yet — apps/api/test/*.spec.ts covers
+  # pure utility functions. Add a `services:` block (postgres+pgvector, redis)
+  # here if/when integration tests are introduced.
