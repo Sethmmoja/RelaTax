@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { randomUUID } from "crypto";
+import { Prisma } from "@prisma/client";
 import { DocumentCategory, NotificationChannel, NotificationType, ReportType } from "@relatax/types";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage/storage.service";
@@ -109,19 +110,132 @@ export class DocumentsService {
     });
   }
 
-  async getDownloadUrl(documentId: string, downloadedById?: string) {
+  /** 404s rather than 403s when the document belongs to another business — never confirms it exists. */
+  private async getOwnedDocument(businessId: string, documentId: string) {
     const document = await this.prisma.document.findUnique({ where: { id: documentId } });
-    if (!document) throw new NotFoundException("Document not found");
+    if (!document || document.businessId !== businessId) throw new NotFoundException("Document not found");
+    return document;
+  }
 
+  private async logAccess(documentId: string, userId: string | undefined, action: string) {
     await this.prisma.auditLog.create({
-      data: {
-        userId: downloadedById,
-        action: "DOWNLOAD",
-        entityType: "document",
-        entityId: document.id
+      data: { userId, action, entityType: "document", entityId: documentId }
+    });
+  }
+
+  async getDownloadUrl(businessId: string, documentId: string, downloadedById?: string) {
+    const document = await this.getOwnedDocument(businessId, documentId);
+    await this.logAccess(document.id, downloadedById, "DOWNLOAD");
+    const url = await this.storage.getSignedDownloadUrl(document.storageKey, {
+      disposition: "attachment",
+      filename: document.originalName
+    });
+    return { url, document };
+  }
+
+  /** Same as download, but renders in the browser tab instead of forcing a save-as. */
+  async getViewUrl(businessId: string, documentId: string, viewedById?: string) {
+    const document = await this.getOwnedDocument(businessId, documentId);
+    await this.logAccess(document.id, viewedById, "VIEW");
+    const url = await this.storage.getSignedDownloadUrl(document.storageKey, {
+      disposition: "inline",
+      filename: document.originalName
+    });
+    return { url, document };
+  }
+
+  /**
+   * Generated records (Invoice, Receipt, Payslip, FinancialReport, Sale,
+   * PayrollRun's report, EmployeeDocument) point at their own Document row.
+   * These are all OPTIONAL FKs, so Prisma's default (no explicit onDelete)
+   * is SetNull, not Restrict — the database will NOT reject the delete, it
+   * will silently null out the link and we'd lose the record's only
+   * reference to its generated PDF. So this check happens explicitly, in
+   * application code, before the delete is ever attempted.
+   */
+  private async findLinkedRecord(documentId: string): Promise<string | null> {
+    const [invoice, receipt, financialReport, payslip, sale, payrollRun, employeeDocument] = await Promise.all([
+      this.prisma.invoice.findFirst({ where: { documentId }, select: { id: true } }),
+      this.prisma.receipt.findFirst({ where: { documentId }, select: { id: true } }),
+      this.prisma.financialReport.findFirst({ where: { documentId }, select: { id: true } }),
+      this.prisma.payslip.findFirst({ where: { documentId }, select: { id: true } }),
+      this.prisma.sale.findFirst({ where: { documentId }, select: { id: true } }),
+      this.prisma.payrollRun.findFirst({ where: { reportDocumentId: documentId }, select: { id: true } }),
+      this.prisma.employeeDocument.findFirst({ where: { documentId }, select: { id: true } })
+    ]);
+
+    if (invoice) return "invoice";
+    if (receipt) return "receipt";
+    if (financialReport) return "financial report";
+    if (payslip) return "payslip";
+    if (sale) return "sale receipt";
+    if (payrollRun) return "payroll report";
+    if (employeeDocument) return "employee record";
+    return null;
+  }
+
+  async delete(businessId: string, documentId: string, deletedById?: string): Promise<{ success: true }> {
+    const document = await this.getOwnedDocument(businessId, documentId);
+
+    const linkedTo = await this.findLinkedRecord(document.id);
+    if (linkedTo) {
+      throw new ConflictException(`This document is linked to a generated ${linkedTo} and can't be deleted directly.`);
+    }
+
+    try {
+      await this.prisma.document.delete({ where: { id: document.id } });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2003") {
+        throw new ConflictException("This document is linked to another record and can't be deleted directly.");
       }
+      throw error;
+    }
+
+    await Promise.all([
+      this.storage.delete(document.storageKey),
+      this.prisma.knowledgeBaseChunk.deleteMany({ where: { sourceType: "document", sourceRef: document.id } })
+    ]);
+    await this.logAccess(document.id, deletedById, "DELETE");
+
+    return { success: true };
+  }
+
+  /**
+   * Swaps a document's file content in place (same row id), so anything
+   * pointing at it (an Invoice, Payslip, etc.) keeps working — unlike
+   * delete, this is never blocked by those FK relations.
+   */
+  async replace(
+    businessId: string,
+    documentId: string,
+    input: { originalName: string; mimeType: string; buffer: Buffer },
+    replacedById?: string
+  ) {
+    const document = await this.getOwnedDocument(businessId, documentId);
+
+    const safeName = input.originalName.replace(/[/\\]/g, "_").replace(/[^\w.\- ]/g, "_").slice(-200) || "file";
+    const newStorageKey = `${businessId}/${randomUUID()}-${safeName}`;
+    await this.storage.upload({ key: newStorageKey, body: input.buffer, mimeType: input.mimeType });
+
+    const updated = await this.prisma.document.update({
+      where: { id: document.id },
+      data: {
+        originalName: input.originalName,
+        mimeType: input.mimeType,
+        sizeBytes: input.buffer.byteLength,
+        storageKey: newStorageKey,
+        uploadedById: replacedById ?? document.uploadedById
+      },
+      include: { period: true }
     });
 
-    return { url: await this.storage.getSignedDownloadUrl(document.storageKey), document };
+    await Promise.all([
+      this.storage.delete(document.storageKey),
+      this.prisma.knowledgeBaseChunk.deleteMany({ where: { sourceType: "document", sourceRef: document.id } })
+    ]);
+    await this.aiIndexing.indexDocument(document.id).catch(() => undefined);
+    await this.logAccess(document.id, replacedById, "REPLACE");
+
+    return updated;
   }
 }

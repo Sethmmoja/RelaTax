@@ -665,7 +665,11 @@ export class WhatsAppConversationEngine {
       return this.transport.sendMessage(phone, { type: "text", text: "Please reply with a valid number from the list." });
     }
 
-    const { url } = await this.documentsService.getDownloadUrl(document.id, session.userId ?? undefined);
+    const { url } = await this.documentsService.getDownloadUrl(
+      session.activeBusinessId!,
+      document.id,
+      session.userId ?? undefined
+    );
     await this.transport.sendMessage(phone, {
       type: "document",
       documentUrl: url,

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -30,6 +31,18 @@ const ALLOWED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 ]);
 
+/** Shared by both the upload and replace endpoints. */
+const FILE_INTERCEPTOR_OPTIONS = {
+  limits: { fileSize: MAX_UPLOAD_BYTES },
+  fileFilter: (_req: unknown, file: Express.Multer.File, callback: (error: Error | null, accept: boolean) => void) => {
+    if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
+      callback(new UnsupportedMediaTypeException(`Unsupported file type: ${file.mimetype}`), false);
+      return;
+    }
+    callback(null, true);
+  }
+};
+
 @ApiTags("documents")
 @ApiBearerAuth()
 @UseGuards(BusinessMemberGuard)
@@ -49,18 +62,7 @@ export class DocumentsController {
 
   @ApiConsumes("multipart/form-data")
   @Post()
-  @UseInterceptors(
-    FileInterceptor("file", {
-      limits: { fileSize: MAX_UPLOAD_BYTES },
-      fileFilter: (_req, file, callback) => {
-        if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
-          callback(new UnsupportedMediaTypeException(`Unsupported file type: ${file.mimetype}`), false);
-          return;
-        }
-        callback(null, true);
-      }
-    })
-  )
+  @UseInterceptors(FileInterceptor("file", FILE_INTERCEPTOR_OPTIONS))
   upload(
     @Param("businessId") businessId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -83,7 +85,46 @@ export class DocumentsController {
   }
 
   @Get(":documentId/download")
-  download(@Param("documentId") documentId: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.documentsService.getDownloadUrl(documentId, user.id);
+  download(
+    @Param("businessId") businessId: string,
+    @Param("documentId") documentId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    return this.documentsService.getDownloadUrl(businessId, documentId, user.id);
+  }
+
+  @Get(":documentId/view")
+  view(
+    @Param("businessId") businessId: string,
+    @Param("documentId") documentId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    return this.documentsService.getViewUrl(businessId, documentId, user.id);
+  }
+
+  @Delete(":documentId")
+  remove(
+    @Param("businessId") businessId: string,
+    @Param("documentId") documentId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    return this.documentsService.delete(businessId, documentId, user.id);
+  }
+
+  @ApiConsumes("multipart/form-data")
+  @Post(":documentId/replace")
+  @UseInterceptors(FileInterceptor("file", FILE_INTERCEPTOR_OPTIONS))
+  replace(
+    @Param("businessId") businessId: string,
+    @Param("documentId") documentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @UploadedFile() file: Express.Multer.File
+  ) {
+    return this.documentsService.replace(
+      businessId,
+      documentId,
+      { originalName: file.originalname, mimeType: file.mimetype, buffer: file.buffer },
+      user.id
+    );
   }
 }

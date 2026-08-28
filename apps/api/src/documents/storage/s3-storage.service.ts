@@ -6,7 +6,7 @@ import {
   S3Client
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { StorageService, UploadInput } from "./storage.service";
+import { SignedUrlOptions, StorageService, UploadInput } from "./storage.service";
 
 @Injectable()
 export class S3StorageService extends StorageService {
@@ -38,10 +38,16 @@ export class S3StorageService extends StorageService {
     );
   }
 
-  async getSignedDownloadUrl(key: string): Promise<string> {
-    return getSignedUrl(this.client, new GetObjectCommand({ Bucket: this.bucket, Key: key }), {
-      expiresIn: 300
-    });
+  async getSignedDownloadUrl(key: string, opts?: SignedUrlOptions): Promise<string> {
+    const responseContentDisposition = opts?.disposition
+      ? `${opts.disposition}${opts.filename ? `; filename="${opts.filename.replace(/"/g, "")}"` : ""}`
+      : undefined;
+
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({ Bucket: this.bucket, Key: key, ResponseContentDisposition: responseContentDisposition }),
+      { expiresIn: 300 }
+    );
   }
 
   async delete(key: string): Promise<void> {

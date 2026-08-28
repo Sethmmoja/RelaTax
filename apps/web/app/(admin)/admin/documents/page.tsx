@@ -1,6 +1,7 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { RefreshCw, Trash2 } from "lucide-react";
 import { Button, DataTable } from "@relatax/ui";
 import { apiFetch, getToken } from "../../../../lib/api-client";
 
@@ -46,6 +47,8 @@ export default function AdminDocumentsPage() {
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
   const [uploading, setUploading] = useState(false);
   const [filterType, setFilterType] = useState("");
+  const replaceInputRef = useRef<HTMLInputElement>(null);
+  const [replacingId, setReplacingId] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<Business[]>("/admin/businesses").then((rows) => {
@@ -64,6 +67,48 @@ export default function AdminDocumentsPage() {
   async function handleDownload(documentId: string) {
     const result = await apiFetch<{ url: string }>(`/businesses/${businessId}/documents/${documentId}/download`);
     window.open(result.url, "_blank");
+  }
+
+  async function handleView(documentId: string) {
+    const result = await apiFetch<{ url: string }>(`/businesses/${businessId}/documents/${documentId}/view`);
+    window.open(result.url, "_blank");
+  }
+
+  async function handleDelete(documentId: string) {
+    if (!confirm("Delete this document? This can't be undone.")) return;
+    try {
+      await apiFetch(`/businesses/${businessId}/documents/${documentId}`, { method: "DELETE" });
+      setDocuments((prev) => prev.filter((d) => d.id !== documentId));
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to delete document.");
+    }
+  }
+
+  function handleReplaceClick(documentId: string) {
+    setReplacingId(documentId);
+    replaceInputRef.current?.click();
+  }
+
+  async function handleReplaceFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const newFile = e.target.files?.[0];
+    e.target.value = "";
+    if (!newFile || !replacingId || !businessId) return;
+
+    const formData = new FormData();
+    formData.append("file", newFile);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}/businesses/${businessId}/documents/${replacingId}/replace`,
+        { method: "POST", body: formData, headers: { Authorization: `Bearer ${getToken()}` } }
+      );
+      if (!res.ok) throw new Error("Replace failed");
+      const updated = await res.json();
+      setDocuments((prev) => prev.map((d) => (d.id === replacingId ? updated : d)));
+    } catch {
+      alert("Failed to replace document.");
+    } finally {
+      setReplacingId(null);
+    }
   }
 
   async function handleUpload(e: FormEvent) {
@@ -154,9 +199,26 @@ export default function AdminDocumentsPage() {
           {
             header: "",
             cell: (d: DocumentRow) => (
-              <button className="text-primary hover:underline" onClick={() => handleDownload(d.id)}>
-                Download
-              </button>
+              <div className="flex items-center gap-3">
+                <button className="text-primary hover:underline" onClick={() => handleView(d.id)}>View</button>
+                <button className="text-primary hover:underline" onClick={() => handleDownload(d.id)}>Download</button>
+                <button
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={() => handleReplaceClick(d.id)}
+                  aria-label="Replace document"
+                  title="Replace"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+                <button
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDelete(d.id)}
+                  aria-label="Delete document"
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             )
           }
         ]}
@@ -164,6 +226,8 @@ export default function AdminDocumentsPage() {
         keyFor={(d) => d.id}
         emptyMessage="No documents uploaded for this business yet."
       />
+
+      <input ref={replaceInputRef} type="file" className="hidden" onChange={handleReplaceFileSelected} />
     </div>
   );
 }

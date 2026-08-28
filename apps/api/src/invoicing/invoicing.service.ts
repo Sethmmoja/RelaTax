@@ -234,7 +234,7 @@ export class InvoicingService {
 
   /** Pushes the fulfilled invoice document straight to every business member with a phone on file. */
   private async deliverInvoice(businessId: string, documentId: string, documentName: string) {
-    const { url } = await this.documentsService.getDownloadUrl(documentId);
+    const { url } = await this.documentsService.getDownloadUrl(businessId, documentId);
 
     await this.notifications.notifyBusiness(businessId, {
       type: NotificationType.COMPLETED_WORK,
