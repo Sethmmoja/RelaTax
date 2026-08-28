@@ -74,7 +74,14 @@ Both were built and run locally against the real `infra/docker-compose.yml` stac
 
 `.github/workflows/ci.yml` runs on every PR and on push to `main`: install → `prisma generate` → `typecheck`/`build`/`test` (via Turborepo, so only affected packages rebuild) → `pnpm audit --prod --audit-level=high` (fails the build on any high/critical dependency vulnerability — see [security notes](#security-hardening-notes) below). This has not been run against a live GitHub Actions runner since the repo has no configured remote yet; the steps mirror exactly what was run and verified locally in this session.
 
-Not yet built: the deploy-to-staging/production steps referenced in the table above (image push to a registry, `prisma migrate deploy` as a distinct pipeline step) — those depend on which hosting provider is chosen, which is your decision to make, not something to default on your behalf.
+`.github/workflows/release.yml` builds both production images and publishes them to GitHub Container Registry. It triggers on a **successful** CI run against `main` (a red build never produces a pullable tag) and can also be dispatched by hand with an extra version tag. Images are published as `ghcr.io/sethmmoja/relatax-{api,web}`, tagged `latest` and the exact commit SHA.
+
+Two things about it are load-bearing:
+
+- **It exists mainly so the VPS never builds.** A Next.js production build wants 2 GB+ on its own; on a 4 GB box, running it alongside Postgres and Redis can get OOM-killed mid-deploy. Set `API_IMAGE`/`WEB_IMAGE` in `prod.env` to the `ghcr.io` tags and deploy with `pull` + `up -d` instead of `up -d --build`.
+- **The web build fails fast if `NEXT_PUBLIC_API_URL` is unset.** It's a repository *variable* (Settings → Secrets and variables → Actions → Variables), not a secret. Without the guard, an unset variable would fall through to the Dockerfile's localhost default and publish an image whose every API call points at the visitor's own machine — silently, since nothing errors at build time.
+
+Still not automated: deploying to the server itself (pulling the new tag and restarting). That stays a manual step on the box for now, which is appropriate while there is a single unmanaged VPS and no staging environment to promote from.
 
 ## Cutover runbook
 

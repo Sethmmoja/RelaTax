@@ -45,7 +45,10 @@ services:
     build:
       context: ..
       dockerfile: apps/api/Dockerfile
-    image: relatax-api:${RELEASE_TAG:-latest}
+    # Point at a ghcr.io tag to pull CI-built images instead of building here
+    # (`docker compose ... pull` then `up -d`, no --build). Recommended on a
+    # 4 GB box, where a local Next.js build can exhaust memory.
+    image: ${API_IMAGE:-relatax-api:latest}
     restart: unless-stopped
     env_file:
       - prod.env
@@ -79,7 +82,7 @@ services:
         # Baked into the client bundle at build time — changing it later needs
         # a rebuild (`up -d --build`), not just a restart.
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL in prod.env}
-    image: relatax-web:${RELEASE_TAG:-latest}
+    image: ${WEB_IMAGE:-relatax-web:latest}
     restart: unless-stopped
     depends_on:
       api:
