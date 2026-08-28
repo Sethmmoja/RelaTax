@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import { RefreshCw, Trash2 } from "lucide-react";
-import { Button, DataTable } from "@relatax/ui";
+import { FormEvent, useEffect, useState } from "react";
+import { Trash2 } from "lucide-react";
+import { Button, DataTable, Modal } from "@relatax/ui";
 import { apiFetch, getToken } from "../../../../lib/api-client";
 import { useBusiness } from "../../../../lib/business-context";
+import { DocumentPreview } from "../../../../components/DocumentPreview";
 
 interface DocumentRow {
   id: string;
@@ -31,8 +32,7 @@ export default function DocumentsPage() {
   const [year, setYear] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const replaceInputRef = useRef<HTMLInputElement>(null);
-  const [replacingId, setReplacingId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ doc: DocumentRow; url: string } | null>(null);
 
   function loadDocuments() {
     if (!activeBusinessId) return;
@@ -46,9 +46,9 @@ export default function DocumentsPage() {
     window.open(result.url, "_blank");
   }
 
-  async function handleView(documentId: string) {
-    const result = await apiFetch<{ url: string }>(`/businesses/${activeBusinessId}/documents/${documentId}/view`);
-    window.open(result.url, "_blank");
+  async function handleView(doc: DocumentRow) {
+    const result = await apiFetch<{ url: string }>(`/businesses/${activeBusinessId}/documents/${doc.id}/view`);
+    setPreview({ doc, url: result.url });
   }
 
   async function handleDelete(documentId: string) {
@@ -58,33 +58,6 @@ export default function DocumentsPage() {
       setDocuments((prev) => prev.filter((d) => d.id !== documentId));
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to delete document.");
-    }
-  }
-
-  function handleReplaceClick(documentId: string) {
-    setReplacingId(documentId);
-    replaceInputRef.current?.click();
-  }
-
-  async function handleReplaceFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const newFile = e.target.files?.[0];
-    e.target.value = "";
-    if (!newFile || !replacingId || !activeBusinessId) return;
-
-    const formData = new FormData();
-    formData.append("file", newFile);
-    try {
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1"}/businesses/${activeBusinessId}/documents/${replacingId}/replace`,
-        { method: "POST", body: formData, headers: { Authorization: `Bearer ${getToken()}` } }
-      );
-      if (!res.ok) throw new Error("Replace failed");
-      const updated = await res.json();
-      setDocuments((prev) => prev.map((d) => (d.id === replacingId ? updated : d)));
-    } catch {
-      alert("Failed to replace document.");
-    } finally {
-      setReplacingId(null);
     }
   }
 
@@ -170,16 +143,8 @@ export default function DocumentsPage() {
             header: "",
             cell: (d: DocumentRow) => (
               <div className="flex items-center gap-3">
-                <button className="text-primary hover:underline" onClick={() => handleView(d.id)}>View</button>
+                <button className="text-primary hover:underline" onClick={() => handleView(d)}>View</button>
                 <button className="text-primary hover:underline" onClick={() => handleDownload(d.id)}>Download</button>
-                <button
-                  className="text-muted-foreground hover:text-foreground"
-                  onClick={() => handleReplaceClick(d.id)}
-                  aria-label="Replace document"
-                  title="Replace"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </button>
                 <button
                   className="text-muted-foreground hover:text-destructive"
                   onClick={() => handleDelete(d.id)}
@@ -197,7 +162,14 @@ export default function DocumentsPage() {
         emptyMessage="No documents uploaded yet."
       />
 
-      <input ref={replaceInputRef} type="file" className="hidden" onChange={handleReplaceFileSelected} />
+      <Modal
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title={preview?.doc.originalName}
+        className="max-w-4xl"
+      >
+        {preview && <DocumentPreview mimeType={preview.doc.mimeType} url={preview.url} />}
+      </Modal>
     </div>
   );
 }
