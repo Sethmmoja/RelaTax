@@ -9,6 +9,7 @@ import { TaxesService } from "../taxes/taxes.service";
 import { DocumentsService } from "../documents/documents.service";
 import { NotificationsService } from "../notifications/notifications.service";
 import { AiService } from "../ai/ai.types";
+import { BusinessFactsService } from "../ai/business-facts.service";
 import { InvoicingService } from "../invoicing/invoicing.service";
 import { isValidKraPin } from "../invoicing/kra-pin.util";
 import { WhatsAppTransport } from "./whatsapp-transport";
@@ -44,6 +45,7 @@ export class WhatsAppConversationEngine {
     private documentsService: DocumentsService,
     private notificationsService: NotificationsService,
     private aiService: AiService,
+    private businessFacts: BusinessFactsService,
     private invoicingService: InvoicingService,
     private transport: WhatsAppTransport
   ) {}
@@ -738,7 +740,10 @@ export class WhatsAppConversationEngine {
   // -- AI ---------------------------------------------------------------------
 
   private async handleAiChat(phone: string, question: string, businessId?: string) {
-    const result = await this.aiService.chat(question, { businessId });
+    // Ground the answer in this client's actual current tax/document standing, not just
+    // the knowledge base — same "current issues" context the portal assistant already gets.
+    const extraFacts = businessId ? await this.businessFacts.buildBusinessFacts(businessId) : undefined;
+    const result = await this.aiService.chat(question, { businessId, extraFacts });
     await this.transport.sendMessage(phone, { type: "text", text: result.answer });
 
     if (result.lowConfidence) {

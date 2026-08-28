@@ -3,6 +3,7 @@ import { AiService } from "./ai.types";
 import { MockAiService } from "./mock-ai.service";
 import { AnthropicAiService } from "./anthropic-ai.service";
 import { AiIndexingService } from "./ai-indexing.service";
+import { BusinessFactsService } from "./business-facts.service";
 import { AiController } from "./ai.controller";
 import { KnowledgeBaseController } from "./knowledge-base.controller";
 
@@ -12,6 +13,7 @@ import { KnowledgeBaseController } from "./knowledge-base.controller";
     MockAiService,
     AnthropicAiService,
     AiIndexingService,
+    BusinessFactsService,
     {
       provide: AiService,
       // Use real Claude generation only when explicitly enabled and a key is present;
@@ -24,6 +26,6 @@ import { KnowledgeBaseController } from "./knowledge-base.controller";
       inject: [MockAiService, AnthropicAiService]
     }
   ],
-  exports: [AiService, AiIndexingService]
+  exports: [AiService, AiIndexingService, BusinessFactsService]
 })
 export class AiModule {}
