@@ -14,6 +14,13 @@ cp prod.env.example prod.env        # fill in — gitignored, never commit
 # place the Cloudflare Origin Certificate pair at infra/certs/
 #   origin.pem / origin-key.pem     (also gitignored)
 docker compose --env-file prod.env -f docker-compose.prod.yml up -d --build
+
+# Apply the schema. Note the explicit binary path and working directory:
+# `npx prisma` does NOT work here — the Prisma CLI is installed under
+# apps/api/node_modules, not the workspace root, so npx treats it as missing
+# and hangs forever on an install confirmation prompt with no TTY attached.
+docker compose --env-file prod.env -f docker-compose.prod.yml \
+  exec -w /app/apps/api api ./node_modules/.bin/prisma migrate deploy
 ```
 
 Deliberate choices worth knowing before changing anything here:

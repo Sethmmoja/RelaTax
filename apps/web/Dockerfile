@@ -36,4 +36,9 @@ COPY --from=installer /app/apps/web/public ./apps/web/public
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
+# Next.js standalone binds to $HOSTNAME, and Docker sets HOSTNAME to the
+# container id — which makes the server listen on the container's IP alone,
+# so nothing inside the container (a healthcheck, an exec) can reach it on
+# localhost. Bind all interfaces instead.
+ENV HOSTNAME=0.0.0.0
 CMD ["node", "apps/web/server.js"]
