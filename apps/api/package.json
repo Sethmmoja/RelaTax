@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
+    "predev": "bash ../../infra/scripts/ensure-infra.sh",
     "dev": "nest start --watch",
     "start": "node dist/src/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\"",
