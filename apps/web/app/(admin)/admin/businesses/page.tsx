@@ -46,6 +46,8 @@ interface SyncLog {
 interface CloudDriveConnection {
   connected: boolean;
   connection: { provider: string; folderName: string | null; lastSyncedAt: string | null } | null;
+  /** True when the API runs the offline mock connector — no real consent screen exists to send anyone to. */
+  mock: boolean;
 }
 
 interface MpesaConnection {
@@ -81,6 +83,8 @@ export default function BusinessesPage() {
   const [importLogs, setImportLogs] = useState<SyncLog[]>([]);
   const [importing, setImporting] = useState(false);
 
+  const [driveResult, setDriveResult] = useState<{ ok: boolean; message: string } | null>(null);
+
   const [mpesa, setMpesa] = useState<MpesaConnection | null>(null);
   const [mpesaEnvironment, setMpesaEnvironment] = useState("sandbox");
   const [mpesaShortCode, setMpesaShortCode] = useState("");
@@ -97,6 +101,31 @@ export default function BusinessesPage() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  /**
+   * Google sends the browser back here after consent. Surface the outcome —
+   * a failure is usually something the person who just clicked can fix
+   * ("create a subfolder named X"), so the reason is shown rather than a bare
+   * "it didn't work". The query string is then cleared so a refresh doesn't
+   * replay a stale result.
+   */
+  useEffect(() => {
+    if (businesses.length === 0) return;
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("cloudDrive");
+    if (!status) return;
+
+    const business = businesses.find((b) => b.id === params.get("businessId"));
+    setDriveResult(
+      status === "connected"
+        ? { ok: true, message: `Google Drive connected${business ? ` for ${business.name}` : ""}.` }
+        : { ok: false, message: params.get("reason") || "Connecting Google Drive failed." }
+    );
+    if (business) openEdit(business);
+    window.history.replaceState({}, "", window.location.pathname);
+    // Runs once businesses are loaded, so the returning businessId can be named.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [businesses]);
 
   /**
    * Opens this business's client-view portal directly — no separate login.
@@ -213,8 +242,21 @@ export default function BusinessesPage() {
 
   async function handleConnectCloudDrive() {
     if (!editingBusiness) return;
-    await apiFetch(`/cloud-drive/callback?state=${editingBusiness.id}&code=mock-${Date.now()}`);
-    await handleImportNow();
+
+    // Mock connector: no real consent screen exists, so the callback is
+    // simulated in place and the import runs immediately.
+    if (drive?.mock) {
+      await apiFetch(`/cloud-drive/callback?state=${editingBusiness.id}&code=mock-${Date.now()}`);
+      await handleImportNow();
+      return;
+    }
+
+    // Real provider: hand the browser to Google. It comes back to this page
+    // with ?cloudDrive=connected|error, picked up by the effect below.
+    const { url } = await apiFetch<{ url: string }>(
+      `/businesses/${editingBusiness.id}/cloud-drive/connect`
+    );
+    window.location.href = url;
   }
 
   async function handleImportNow() {
@@ -428,6 +470,17 @@ export default function BusinessesPage() {
 
         <div className="mt-6 border-t border-border pt-4">
           <p className="mb-2 text-sm font-medium">Cloud drive reports</p>
+          {driveResult && (
+            <div
+              className={`mb-3 rounded-lg border p-3 text-sm ${
+                driveResult.ok
+                  ? "border-primary/40 bg-primary/10 text-foreground"
+                  : "border-destructive/40 bg-destructive/10 text-foreground"
+              }`}
+            >
+              {driveResult.message}
+            </div>
+          )}
           {drive?.connected ? (
             <>
               <p className="text-sm text-muted-foreground">
@@ -435,9 +488,16 @@ export default function BusinessesPage() {
                 imported:{" "}
                 {drive.connection?.lastSyncedAt ? new Date(drive.connection.lastSyncedAt).toLocaleString() : "never"}.
               </p>
-              <Button size="sm" variant="outline" className="mt-2" onClick={handleImportNow} disabled={importing}>
-                {importing ? "Importing…" : "Import now"}
-              </Button>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Button size="sm" variant="outline" onClick={handleImportNow} disabled={importing}>
+                  {importing ? "Importing…" : "Import now"}
+                </Button>
+                {/* Needed to move a business to a different Drive account, or to
+                    re-resolve its folder after the layout changed. */}
+                <Button size="sm" variant="outline" onClick={handleConnectCloudDrive}>
+                  {drive.mock ? "Reconnect (mock)" : "Reconnect Google Drive"}
+                </Button>
+              </div>
               <div className="mt-3 space-y-1">
                 {importLogs.map((log) => (
                   <div key={log.id} className="flex items-center justify-between text-xs">
@@ -456,11 +516,12 @@ export default function BusinessesPage() {
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Connect a shared Google Drive or Dropbox folder — reports dropped in are imported automatically and
-                categorized by filename. Phase 1 uses a mock connector, no real credentials required yet.
+                {drive?.mock
+                  ? "Using the offline mock connector — no real credentials required. Connecting simulates a folder of sample reports."
+                  : `Connects to the "RelaTax Reports/${editingBusiness?.name ?? ""}" folder in the Google account you authorize. Reports dropped in there are imported and categorized by filename. The subfolder must already exist and match the business name exactly.`}
               </p>
               <Button size="sm" variant="outline" className="mt-2" onClick={handleConnectCloudDrive}>
-                Connect cloud drive (mock)
+                {drive?.mock ? "Connect cloud drive (mock)" : "Connect Google Drive"}
               </Button>
             </>
           )}

@@ -31,7 +31,10 @@ export class CloudDriveService {
       where: { businessId },
       select: { id: true, provider: true, folderName: true, lastSyncedAt: true, createdAt: true }
     });
-    return { connected: !!connection, connection };
+    // `mock` tells the admin UI which connect flow to offer: simulating the
+    // callback locally, or sending the browser to the provider's real consent
+    // screen. Without it the UI can't tell before a connection exists.
+    return { connected: !!connection, connection, mock: this.isMock };
   }
 
   async handleCallback(businessId: string, code: string) {
