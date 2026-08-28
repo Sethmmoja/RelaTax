@@ -51,6 +51,17 @@ export const envSchema = z.object({
   API_BASE_URL: z.string().url().default("http://localhost:4000"),
   APP_URL: z.string().url().default("http://localhost:3000"),
 
+  // Number of reverse proxies in front of this API, counted from the app
+  // outward. Rate limiting buckets by client IP, so behind a proxy every
+  // request would otherwise share the proxy's IP and one busy client could
+  // throttle everyone. Defaults to 0 (trust nothing) because trusting a hop
+  // that isn't really there lets a client spoof X-Forwarded-For and evade
+  // the limits entirely. Production behind Cloudflare + Caddy: 2.
+  TRUST_PROXY_HOPS: z
+    .string()
+    .default("0")
+    .transform((v) => parseInt(v, 10)),
+
   SENTRY_DSN: z.string().optional().default(""),
 
   BULL_BOARD_USER: z.string().default("admin"),

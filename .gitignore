@@ -16,5 +16,9 @@ apps/api/generated/
 .vscode/
 docker-data/
 infra/backups/
+# Production secrets and TLS private keys — never commit
+infra/prod.env
+infra/certs/*
+!infra/certs/README.md
 .claude/settings.local.json
 *.tsbuildinfo

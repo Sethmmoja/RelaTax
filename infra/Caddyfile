@@ -1,0 +1,47 @@
+# TLS termination in front of the RelaTax web app and API.
+#
+# Certificates are Cloudflare Origin Certificates (free, 15-year), not Let's
+# Encrypt: with the domain proxied through Cloudflare, ACME's HTTP challenge
+# has to round-trip the proxy, and an origin cert avoids that entirely. Pair
+# this with Cloudflare SSL/TLS mode "Full (strict)" — "Flexible" would leave
+# this hop unencrypted, which is the whole thing these certs exist to prevent.
+#
+# Place the pair at infra/certs/origin.pem and infra/certs/origin-key.pem.
+
+{
+	admin off
+}
+
+(relatax_tls) {
+	tls /etc/caddy/certs/origin.pem /etc/caddy/certs/origin-key.pem
+}
+
+(relatax_headers) {
+	header {
+		# Cloudflare also sets these, but the origin should not depend on the
+		# proxy for its own security headers.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}
+
+relatax.org, www.relatax.org {
+	import relatax_tls
+	import relatax_headers
+	encode zstd gzip
+	reverse_proxy web:3000
+}
+
+api.relatax.org {
+	import relatax_tls
+	import relatax_headers
+	encode zstd gzip
+
+	# The API counts proxy hops (TRUST_PROXY_HOPS) to recover the real client
+	# IP for rate limiting, so the forwarding headers must be intact.
+	reverse_proxy api:4000 {
+		header_up X-Real-IP {remote_host}
+	}
+}

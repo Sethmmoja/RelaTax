@@ -17,6 +17,15 @@ async function bootstrap() {
     rawBody: true
   });
 
+  // Behind a reverse proxy, req.ip is the proxy's address unless Express is
+  // told how many hops to unwind — which would silently collapse every
+  // client into a single rate-limit bucket. Left off by default so a
+  // directly-exposed API can't be fooled by a forged X-Forwarded-For.
+  const trustProxyHops = parseInt(process.env.TRUST_PROXY_HOPS ?? "0", 10);
+  if (trustProxyHops > 0) {
+    app.getHttpAdapter().getInstance().set("trust proxy", trustProxyHops);
+  }
+
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false })
   );

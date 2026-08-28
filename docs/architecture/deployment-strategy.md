@@ -2,7 +2,26 @@
 
 ## Local development
 
-`infra/docker-compose.yml` runs Postgres+pgvector, Redis, and MinIO. Each app runs natively via `pnpm dev` (Turborepo) for fast iteration — only stateful infra is containerized locally.
+`infra/docker-compose.yml` runs Postgres+pgvector, Redis, and MinIO. Each app runs natively via `pnpm dev` (Turborepo) for fast iteration — only stateful infra is containerized locally. `apps/api`'s `predev` hook starts those containers (and Docker Desktop itself) automatically, so `pnpm dev` is the only command needed.
+
+## Production stack (single VPS)
+
+`infra/docker-compose.prod.yml` runs the whole system on one box: Postgres+pgvector, Redis, the API, the web app, and Caddy terminating TLS. Object storage is **not** in it — production uses Cloudflare R2 via the same S3 API, configured through `STORAGE_*`.
+
+```bash
+cd infra
+cp prod.env.example prod.env        # fill in — gitignored, never commit
+# place the Cloudflare Origin Certificate pair at infra/certs/
+#   origin.pem / origin-key.pem     (also gitignored)
+docker compose --env-file prod.env -f docker-compose.prod.yml up -d --build
+```
+
+Deliberate choices worth knowing before changing anything here:
+
+- **Postgres and Redis publish no ports.** They're reachable only on the internal compose network, so a misconfigured firewall still can't expose the database.
+- **`NEXT_PUBLIC_API_URL` is a build argument, not a runtime variable.** Next.js inlines `NEXT_PUBLIC_*` into the browser bundle at build time — changing it requires `up -d --build`, not a restart. Without it the image bakes in the localhost fallback and every visitor's browser calls their own machine.
+- **`TRUST_PROXY_HOPS=2`** (Cloudflare → Caddy → API). Rate limiting buckets by client IP; behind proxies, `req.ip` is the proxy's address unless Express is told how many hops to unwind, which would collapse every client into one bucket and make the per-IP login/OTP limits meaningless. It defaults to `0` so a directly-exposed API can't be fooled by a forged `X-Forwarded-For`.
+- **Caddy serves Cloudflare Origin Certificates rather than Let's Encrypt.** With the domain proxied, ACME's HTTP challenge has to round-trip the proxy; an origin cert avoids that. Pair with Cloudflare SSL/TLS mode **Full (strict)** — "Flexible" leaves the Cloudflare→origin hop unencrypted.
 
 ## Environments
 

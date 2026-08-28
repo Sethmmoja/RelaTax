@@ -15,6 +15,14 @@ COPY --from=pruner /app/out/json/ .
 RUN pnpm install --frozen-lockfile
 COPY --from=pruner /app/out/full/ .
 COPY tsconfig.base.json ./tsconfig.base.json
+
+# Next.js inlines NEXT_PUBLIC_* into the client bundle at build time, so this
+# has to be present now — not at container start. Without it the build bakes in
+# the localhost fallback and every browser on the live site calls the visitor's
+# own machine. Pass it with --build-arg (docker-compose.prod.yml does).
+ARG NEXT_PUBLIC_API_URL="http://localhost:4000/api/v1"
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN npx turbo run build --filter=@relatax/web
 
 # ---- Slim runtime image (Next.js standalone output) ----
