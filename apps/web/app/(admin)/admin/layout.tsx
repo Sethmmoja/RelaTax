@@ -8,6 +8,7 @@ import { BusinessProvider, useBusiness } from "../../../lib/business-context";
 import { Logo } from "../../../components/Logo";
 import { PortalFooter } from "../../../components/PortalFooter";
 import { SidebarNav } from "../../../components/SidebarNav";
+import { RouteTransition } from "../../../components/RouteTransition";
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard" },
@@ -86,7 +87,9 @@ function AdminChrome({ children }: { children: React.ReactNode }) {
             <button onClick={logout} className="font-medium hover:text-primary">Log out</button>
           </div>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6">
+          <RouteTransition>{children}</RouteTransition>
+        </main>
         <PortalFooter />
       </div>
     </div>

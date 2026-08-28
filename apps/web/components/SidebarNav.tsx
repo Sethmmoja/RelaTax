@@ -76,6 +76,27 @@ export function SidebarNav({ items, className }: { items: NavItem[]; className?:
     { dependencies: [pathname], scope: containerRef }
   );
 
+  // Opacity-only first-load entrance — independent of the Flip indicator
+  // logic above (which measures position, not opacity), so the two effects
+  // can't interfere with each other regardless of run order.
+  useGSAP(
+    () => {
+      const container = containerRef.current;
+      if (!container) return;
+      const links = container.querySelectorAll("a");
+      if (!links.length) return;
+
+      const mm = gsap.matchMedia();
+      mm.add("(prefers-reduced-motion: no-preference)", () => {
+        gsap.set(links, { opacity: 0 });
+        gsap.to(links, { opacity: 1, duration: 0.35, ease: "power2.out", stagger: 0.04 });
+      });
+
+      return () => mm.revert();
+    },
+    { dependencies: [], scope: containerRef }
+  );
+
   return (
     <div ref={containerRef} className={`relative space-y-1 ${className ?? ""}`}>
       <span ref={indicatorRef} className="absolute left-0 top-0 z-0 rounded-lg bg-primary" style={{ width: 0, height: 0 }} aria-hidden />

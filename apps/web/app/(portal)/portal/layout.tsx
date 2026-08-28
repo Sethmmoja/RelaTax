@@ -11,6 +11,7 @@ import { PortalAIChatWidget } from "../../../components/portal/PortalAIChatWidge
 import { Logo } from "../../../components/Logo";
 import { PortalFooter } from "../../../components/PortalFooter";
 import { SidebarNav } from "../../../components/SidebarNav";
+import { RouteTransition } from "../../../components/RouteTransition";
 
 const navItems = [
   { href: "/portal/dashboard", label: "Dashboard" },
@@ -134,7 +135,9 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6">
+          <RouteTransition>{children}</RouteTransition>
+        </main>
         <PortalFooter />
       </div>
       <PortalAIChatWidget />
