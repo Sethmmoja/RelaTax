@@ -811,7 +811,7 @@ export class WhatsAppConversationEngine {
   private async contactRelaTax(phone: string) {
     await this.transport.sendMessage(phone, {
       type: "text",
-      text: "RelaTax — sethomoke25@gmail.com · +254 115 581 898 · Nairobi, Kenya. Reply 'menu' to go back."
+      text: "RelaTax — info@relatax.org · +254 115 581 898 · Nairobi, Kenya. Reply 'menu' to go back."
     });
   }
 }

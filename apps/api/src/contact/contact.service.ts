@@ -7,7 +7,7 @@ import { NotificationsService } from "../notifications/notifications.service";
 import { CreateContactInquiryDto } from "./dto/create-contact-inquiry.dto";
 
 // RelaTax's own contact details (footer/contact page) — not the submitter's.
-const OWNER_EMAIL = "sethomoke25@gmail.com";
+const OWNER_EMAIL = "info@relatax.org";
 const OWNER_WHATSAPP = "254115581898";
 
 @Injectable()

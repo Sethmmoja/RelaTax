@@ -27,7 +27,7 @@ export class SmtpEmailService extends EmailService {
   async send(message: EmailMessage): Promise<void> {
     try {
       await this.transporter.sendMail({
-        from: process.env.SMTP_FROM ?? "RelaTax <no-reply@relatax.co.ke>",
+        from: process.env.SMTP_FROM ?? "RelaTax <no-reply@relatax.org>",
         to: message.to,
         subject: message.subject,
         text: message.body,

@@ -46,7 +46,7 @@ export const envSchema = z.object({
     .transform((v) => v === "true"),
   SMTP_USER: z.string().optional().default(""),
   SMTP_PASS: z.string().optional().default(""),
-  SMTP_FROM: z.string().default("RelaTax <no-reply@relatax.co.ke>"),
+  SMTP_FROM: z.string().default("RelaTax <no-reply@relatax.org>"),
 
   API_BASE_URL: z.string().url().default("http://localhost:4000"),
   APP_URL: z.string().url().default("http://localhost:3000"),

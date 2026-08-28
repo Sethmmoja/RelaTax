@@ -6,8 +6,8 @@ export function PortalFooter() {
       <div className="flex flex-col items-start justify-between gap-4 text-sm text-muted-foreground sm:flex-row sm:items-center">
         <Logo className="h-6 w-auto" />
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <a href="mailto:sethomoke25@gmail.com" className="hover:text-primary">
-            sethomoke25@gmail.com
+          <a href="mailto:info@relatax.org" className="hover:text-primary">
+            info@relatax.org
           </a>
           <a href="tel:+254115581898" className="hover:text-primary">
             +254 115 581 898

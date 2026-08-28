@@ -25,8 +25,8 @@ export function Footer() {
             <p className="mb-3 font-medium text-foreground">Get in touch</p>
             <ul className="space-y-2">
               <li>
-                <a href="mailto:sethomoke25@gmail.com" className="hover:text-primary">
-                  sethomoke25@gmail.com
+                <a href="mailto:info@relatax.org" className="hover:text-primary">
+                  info@relatax.org
                 </a>
               </li>
               <li>
