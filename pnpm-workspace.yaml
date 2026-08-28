@@ -4,11 +4,21 @@ packages:
 overrides:
   multer: ">=2.2.0"
   nodemailer: ">=8.0.4"
-  js-yaml: ">=4.1.2"
+  js-yaml: ">=4.3.1"
   body-parser: ">=1.20.6"
   lodash: ">=4.17.24"
   sharp: ">=0.35.0"
   postcss: ">=8.5.12"
+  # Reached via exceljs -> archiver/unzipper -> glob -> minimatch. The 1.x and
+  # 2.x lines are both in the tree and each had its own advisory; per-major
+  # selectors are not honoured here, so everything is lifted to the 2.x fix.
+  # The package exports a single function whose signature is unchanged across
+  # these majors, and the XLSX export path is exercised by a test below.
+  brace-expansion: ">=2.1.4"
+  # Scoped to the v3 line (postcss -> next): a bare ">=3.3.18" would also
+  # satisfy 5.x and could pull a major bump into a v3 consumer.
+  nanoid@3: ">=3.3.18"
+  deepmerge-ts: ">=8.0.0"
 allowBuilds:
   '@nestjs/core': true
   '@prisma/client': true
