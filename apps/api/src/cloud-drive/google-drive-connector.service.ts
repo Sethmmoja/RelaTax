@@ -1,17 +1,43 @@
 import { Injectable } from "@nestjs/common";
-import { google } from "googleapis";
-import { CloudDriveConnector, CloudDriveFile, CloudDriveTokens } from "./cloud-drive-connector";
+import { google, drive_v3 } from "googleapis";
+import {
+  CloudDriveBusinessContext,
+  CloudDriveConnector,
+  CloudDriveFile,
+  CloudDriveTokens
+} from "./cloud-drive-connector";
 
 const SCOPES = ["https://www.googleapis.com/auth/drive.readonly"];
 const REPORTS_FOLDER_NAME = "RelaTax Reports";
+const FOLDER_MIME_TYPE = "application/vnd.google-apps.folder";
+
+/**
+ * Drive search terms are single-quoted, so a name containing a quote or
+ * backslash would otherwise break the query — or let a business name chosen by
+ * a user alter its meaning. Business names reach the query, so this is escaped
+ * rather than interpolated raw.
+ */
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+}
 
 /**
  * Real Google Drive connector (Phase 2). Uses a read-only scope only — rather
- * than requesting write access to create a folder, it expects the client to
- * create a folder named exactly "RelaTax Reports" in their own Drive and drop
- * report files into it. This keeps the OAuth consent screen to a single
- * low-sensitivity scope, which avoids Google's stricter app-verification
+ * than requesting write access to create folders, it expects the folders to
+ * already exist and simply resolves them. That keeps the OAuth consent screen
+ * to a single low-sensitivity scope, avoiding Google's stricter app-verification
  * requirements for write/broad scopes.
+ *
+ * Folder layout is deliberately two levels deep:
+ *
+ *   RelaTax Reports/
+ *     Acme Foods Ltd/      <- this business's files, and only this business's
+ *     Zuri Logistics/
+ *
+ * Resolving a per-business subfolder rather than the shared parent is what lets
+ * a single RelaTax Drive account serve every client: binding every business to
+ * the top-level folder would import every client's documents into every other
+ * client's account.
  */
 @Injectable()
 export class GoogleDriveConnector extends CloudDriveConnector {
@@ -40,22 +66,48 @@ export class GoogleDriveConnector extends CloudDriveConnector {
     });
   }
 
-  async exchangeCodeForTokens(code: string, _businessId: string): Promise<CloudDriveTokens> {
+  /** Finds one folder by name, optionally within a specific parent. */
+  private async findFolder(
+    drive: drive_v3.Drive,
+    name: string,
+    parentId?: string
+  ): Promise<drive_v3.Schema$File | undefined> {
+    const clauses = [
+      `name = '${escapeDriveQueryValue(name)}'`,
+      `mimeType = '${FOLDER_MIME_TYPE}'`,
+      "trashed = false"
+    ];
+    if (parentId) clauses.push(`'${escapeDriveQueryValue(parentId)}' in parents`);
+
+    const { data } = await drive.files.list({
+      q: clauses.join(" and "),
+      fields: "files(id, name)",
+      spaces: "drive"
+    });
+    return data.files?.[0];
+  }
+
+  async exchangeCodeForTokens(code: string, business: CloudDriveBusinessContext): Promise<CloudDriveTokens> {
     const client = this.buildClient();
     const { tokens } = await client.getToken(code);
     client.setCredentials(tokens);
 
     const drive = google.drive({ version: "v3", auth: client });
-    const search = await drive.files.list({
-      q: `name = '${REPORTS_FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
-      fields: "files(id, name)",
-      spaces: "drive"
-    });
 
-    const folder = search.data.files?.[0];
-    if (!folder?.id) {
+    const parent = await this.findFolder(drive, REPORTS_FOLDER_NAME);
+    if (!parent?.id) {
       throw new Error(
-        `No "${REPORTS_FOLDER_NAME}" folder found in this Google Drive account. Create a folder named exactly "${REPORTS_FOLDER_NAME}", add the report files to it, then reconnect.`
+        `No "${REPORTS_FOLDER_NAME}" folder found in this Google Drive account. Create a folder named exactly "${REPORTS_FOLDER_NAME}", then a subfolder inside it named exactly "${business.name}", and reconnect.`
+      );
+    }
+
+    // Deliberately no fallback to the parent folder: silently binding this
+    // business to the shared folder is exactly the cross-client leak this
+    // layout exists to prevent, so an unconfigured business fails loudly.
+    const businessFolder = await this.findFolder(drive, business.name, parent.id);
+    if (!businessFolder?.id) {
+      throw new Error(
+        `No "${business.name}" subfolder found inside "${REPORTS_FOLDER_NAME}". Create a subfolder named exactly "${business.name}", put this client's files in it, then reconnect.`
       );
     }
 
@@ -63,8 +115,8 @@ export class GoogleDriveConnector extends CloudDriveConnector {
       accessToken: tokens.access_token ?? "",
       refreshToken: tokens.refresh_token ?? "",
       expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 60 * 60 * 1000),
-      folderId: folder.id,
-      folderName: folder.name ?? REPORTS_FOLDER_NAME
+      folderId: businessFolder.id,
+      folderName: `${REPORTS_FOLDER_NAME}/${businessFolder.name ?? business.name}`
     };
   }
 
@@ -74,7 +126,7 @@ export class GoogleDriveConnector extends CloudDriveConnector {
     const drive = google.drive({ version: "v3", auth: client });
 
     const { data } = await drive.files.list({
-      q: `'${folderId}' in parents and trashed = false`,
+      q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false`,
       fields: "files(id, name, mimeType)",
       spaces: "drive"
     });

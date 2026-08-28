@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
-import { CloudDriveConnector, CloudDriveFile, CloudDriveTokens } from "./cloud-drive-connector";
+import {
+  CloudDriveBusinessContext,
+  CloudDriveConnector,
+  CloudDriveFile,
+  CloudDriveTokens
+} from "./cloud-drive-connector";
 
 /**
  * Phase 1 mock: pretends a shared "RelaTax Reports" folder holds a few report
@@ -17,15 +22,16 @@ export class MockCloudDriveConnector extends CloudDriveConnector {
     return `https://drive.example.com/oauth?mock=true&state=${businessId}`;
   }
 
-  async exchangeCodeForTokens(_code: string, businessId: string): Promise<CloudDriveTokens> {
+  async exchangeCodeForTokens(_code: string, business: CloudDriveBusinessContext): Promise<CloudDriveTokens> {
     return {
       accessToken: `mock-drive-access-${randomUUID()}`,
       refreshToken: `mock-drive-refresh-${randomUUID()}`,
       expiresAt: new Date(Date.now() + 60 * 60 * 1000),
       // Stable per business so re-connecting doesn't re-import the same files,
       // matching how real Drive/Dropbox file ids persist across reconnects.
-      folderId: `mock-folder-${businessId}`,
-      folderName: "RelaTax Reports"
+      folderId: `mock-folder-${business.id}`,
+      // Mirrors the real connector's per-business subfolder layout.
+      folderName: `RelaTax Reports/${business.name}`
     };
   }
 

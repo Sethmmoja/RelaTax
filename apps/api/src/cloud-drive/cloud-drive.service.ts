@@ -35,7 +35,15 @@ export class CloudDriveService {
   }
 
   async handleCallback(businessId: string, code: string) {
-    const tokens = await this.connector.exchangeCodeForTokens(code, businessId);
+    // The connector resolves a folder named after the business, so it needs the
+    // name, not just the id.
+    const business = await this.prisma.business.findUnique({
+      where: { id: businessId },
+      select: { id: true, name: true }
+    });
+    if (!business) throw new NotFoundException("Business not found");
+
+    const tokens = await this.connector.exchangeCodeForTokens(code, business);
 
     const connection = await this.prisma.cloudDriveConnection.upsert({
       where: { businessId },

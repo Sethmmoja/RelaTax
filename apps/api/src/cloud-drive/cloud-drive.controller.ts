@@ -44,8 +44,16 @@ export class CloudDriveController {
       await this.cloudDriveService.handleCallback(businessId, code);
       return res.redirect(`${appUrl}/admin/businesses?cloudDrive=connected&businessId=${encodeURIComponent(businessId)}`);
     } catch (error) {
-      this.logger.error(`Cloud drive callback failed for business ${businessId}: ${(error as Error).message}`);
-      return res.redirect(`${appUrl}/admin/businesses?cloudDrive=error&businessId=${encodeURIComponent(businessId)}`);
+      const reason = (error as Error).message;
+      this.logger.error(`Cloud drive callback failed for business ${businessId}: ${reason}`);
+      // These failures are usually actionable by the person who just clicked
+      // connect ("create a subfolder named X"), so the reason travels back
+      // rather than being flattened into a generic error flag. Capped so a
+      // long provider message can't blow the URL length.
+      return res.redirect(
+        `${appUrl}/admin/businesses?cloudDrive=error&businessId=${encodeURIComponent(businessId)}` +
+          `&reason=${encodeURIComponent(reason.slice(0, 300))}`
+      );
     }
   }
 
