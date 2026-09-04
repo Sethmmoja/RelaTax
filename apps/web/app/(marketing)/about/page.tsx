@@ -1,3 +1,5 @@
+import { pageMetadata } from "../../../lib/seo";
+import { Breadcrumbs } from "../../../components/marketing/Breadcrumbs";
 const credentials = [
   "ACCA, CPA-certified team members",
   "IFRS and IFRS for SMEs reporting specialists",
@@ -25,9 +27,19 @@ const team = [
   }
 ];
 
+export const metadata = pageMetadata({
+  // The root layout appends "| RelaTax"; repeating the brand here would
+  // render "About RelaTax | RelaTax".
+  title: "About Us",
+  description:
+    "ACCA and CPA-certified accountants delivering IFRS reporting, tax compliance and payroll across Kenya and East Africa. Senior leads on every engagement.",
+  path: "/about"
+});
+
 export default function AboutPage() {
   return (
     <section className="mx-auto max-w-4xl px-6 py-20">
+      <Breadcrumbs crumbs={[{ name: "About" }]} />
       <h1 className="font-serif text-4xl md:text-6xl">About RelaTax</h1>
       <p className="mt-6 text-lg text-muted-foreground">
         RelaTax was founded to give growing businesses in Kenya and East Africa access to senior finance expertise —

@@ -1,4 +1,6 @@
 import { Button, Card, CardContent, CardHeader, CardTitle } from "@relatax/ui";
+import { pageMetadata } from "../../lib/seo";
+import { WebSiteSchema } from "../../components/seo/StructuredData";
 import { CinematicHero } from "../../components/marketing/CinematicHero";
 import { LedgerPageTransition } from "../../components/marketing/LedgerPageTransition";
 import { Reveal } from "../../components/motion/Reveal";
@@ -35,9 +37,17 @@ const steps = [
   { number: "04", title: "Advisory", description: "Ongoing guidance as your business grows and priorities shift." }
 ];
 
+export const metadata = pageMetadata({
+  title: "Fractional Accounting, Tax & Payroll in Kenya",
+  description:
+    "Partner-level accounting, KRA tax compliance and payroll for ambitious Kenyan businesses — without the full-time cost. Clean books, on-time filings.",
+  path: "/"
+});
+
 export default function HomePage() {
   return (
     <>
+      <WebSiteSchema />
       <CinematicHero />
 
       <Reveal as="section" className="border-y border-border px-6 py-6">

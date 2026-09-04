@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getResourcePost, resourcePosts } from "../../../../lib/resources-content";
 import { Reveal } from "../../../../components/motion/Reveal";
+import { Breadcrumbs } from "../../../../components/marketing/Breadcrumbs";
+import { ArticleSchema } from "../../../../components/seo/StructuredData";
+import { pageMetadata } from "../../../../lib/seo";
 
 export function generateStaticParams() {
   return resourcePosts.map((p) => ({ slug: p.slug }));
@@ -11,8 +14,16 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = getResourcePost(slug);
+  // A missing post renders the 404, which supplies its own metadata.
   if (!post) return {};
-  return { title: `${post.title} — RelaTax Resources`, description: post.summary };
+
+  // Title carries no brand suffix of its own — the root layout's template
+  // appends "| RelaTax", and doing both would double it.
+  return pageMetadata({
+    title: post.title,
+    description: post.summary,
+    path: `/resources/${post.slug}`
+  });
 }
 
 export default async function ResourcePostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -22,11 +33,15 @@ export default async function ResourcePostPage({ params }: { params: Promise<{ s
 
   return (
     <article className="mx-auto max-w-3xl px-6 py-20">
-      <Link href="/resources" className="text-sm text-muted-foreground hover:text-primary">
-        ← Resources
-      </Link>
+      <ArticleSchema
+        headline={post.title}
+        description={post.summary}
+        path={`/resources/${post.slug}`}
+        updated={post.updated}
+      />
+      <Breadcrumbs crumbs={[{ name: "Resources", href: "/resources" }, { name: post.title }]} />
 
-      <Reveal className="mt-6">
+      <Reveal>
         <h1 className="font-serif text-4xl md:text-5xl">{post.title}</h1>
         <p className="mt-4 text-lg text-muted-foreground">{post.summary}</p>
         <p className="mt-2 font-mono text-xs uppercase tracking-widest text-muted-foreground">

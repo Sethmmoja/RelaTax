@@ -1,6 +1,8 @@
 import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from "@relatax/ui";
 import Link from "next/link";
 import { Reveal } from "../../../components/motion/Reveal";
+import { pageMetadata } from "../../../lib/seo";
+import { Breadcrumbs } from "../../../components/marketing/Breadcrumbs";
 
 const services = [
   {
@@ -62,10 +64,18 @@ const tiers = [
   }
 ];
 
+export const metadata = pageMetadata({
+  title: "Accounting, Tax & Payroll Services",
+  description:
+    "Bookkeeping, financial reporting, VAT and PAYE filings, eTIMS invoicing, payroll and outsourced finance leadership — priced to your transaction volume.",
+  path: "/services"
+});
+
 export default function ServicesPage() {
   return (
     <section className="mx-auto max-w-7xl px-6 py-20">
-      <h1 className="font-serif text-4xl md:text-6xl">Services</h1>
+      <Breadcrumbs crumbs={[{ name: "Services" }]} />
+      <h1 className="font-serif text-4xl md:text-6xl">Accounting, Tax &amp; Payroll Services</h1>
       <p className="mt-4 max-w-2xl text-lg text-muted-foreground">
         One partner for accounting, tax compliance and payroll — sized to your stage.
       </p>

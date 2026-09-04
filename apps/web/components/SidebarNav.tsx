@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef } from "react";
-import { gsap, useGSAP, Flip } from "@relatax/ui";
+import { gsap, useGSAP } from "@relatax/ui";
+// Imported and registered here rather than in the shared GSAP module: this is
+// the only component that uses Flip, and registering it centrally shipped it
+// to every page that touches GSAP, marketing pages included.
+import { Flip } from "gsap/Flip";
+
+gsap.registerPlugin(Flip);
 
 interface NavItem {
   href: string;
