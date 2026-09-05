@@ -7,7 +7,8 @@ export const metadata = pageMetadata({
   title: "Sign In",
   description:
     "Sign in to the RelaTax client portal to view reports, tax filings, invoices and payroll documents.",
-  path: "/login"
+  path: "/login",
+  noIndex: true
 });
 
 export default function LoginLayout({ children }: { children: React.ReactNode }) {

@@ -17,8 +17,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/about", priority: 0.7, changeFrequency: "monthly" },
     { path: "/contact", priority: 0.8, changeFrequency: "monthly" },
     { path: "/book-consultation", priority: 0.6, changeFrequency: "yearly" },
-    { path: "/resources", priority: 0.8, changeFrequency: "weekly" },
-    { path: "/login", priority: 0.3, changeFrequency: "yearly" }
+    { path: "/resources", priority: 0.8, changeFrequency: "weekly" }
+    // /login is deliberately absent: it is noindex, and listing a page in the
+    // sitemap asks search engines to index it — the two directives would
+    // contradict each other.
   ];
 
   return [
