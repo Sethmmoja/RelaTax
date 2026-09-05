@@ -10,6 +10,13 @@ import type { Metadata } from "next";
  * one that still applies if a URL is reached directly or linked from elsewhere.
  */
 export const metadata: Metadata = {
+  // Without this, every admin tab inherits the marketing tagline and a user
+  // with several open can't tell them apart. Pages inside may override the
+  // title; those that don't get this instead of "Fractional Accounting…".
+  title: {
+    default: "Admin",
+    template: "%s | RelaTax Admin"
+  },
   robots: { index: false, follow: false, nocache: true }
 };
 

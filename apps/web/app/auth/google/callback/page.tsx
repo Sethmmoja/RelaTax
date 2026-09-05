@@ -30,13 +30,19 @@ export default function GoogleCallbackPage() {
 
   return (
     <section className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center px-6 py-20 text-center">
-      {error ? (
+      {/* Every page needs exactly one h1, including transient ones — it is what
+          a screen reader announces on arrival. aria-live means the change from
+          "Signing you in" to an error is spoken rather than silently swapped. */}
+      <h1 aria-live="polite" className="font-serif text-2xl">
+        {error ? "Sign-in didn't complete" : "Signing you in…"}
+      </h1>
+      {error && (
         <>
-          <p className="text-sm text-destructive">{error}</p>
-          <a href="/login" className="mt-4 text-sm text-primary hover:underline">Back to sign in</a>
+          <p className="mt-3 text-sm text-destructive">{error}</p>
+          <a href="/login" className="mt-4 text-sm text-primary hover:underline">
+            Back to sign in
+          </a>
         </>
-      ) : (
-        <p className="text-sm text-muted-foreground">Signing you in…</p>
       )}
     </section>
   );

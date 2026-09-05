@@ -11,6 +11,13 @@ import type { Metadata } from "next";
  * directly or linked from somewhere else.
  */
 export const metadata: Metadata = {
+  // Without this, every portal tab inherits the marketing tagline and a user
+  // with several open can't tell them apart. Pages inside may override the
+  // title; those that don't get this instead of "Fractional Accounting…".
+  title: {
+    default: "Client Portal",
+    template: "%s | RelaTax Portal"
+  },
   robots: { index: false, follow: false, nocache: true }
 };
 
