@@ -13,7 +13,7 @@ export interface ExtractionResult {
   /** Plain text, or null when the format has no text layer we can read. */
   text: string | null;
   /** Why text is null — surfaced in logs so a silent "no content" is explainable. */
-  reason?: "unsupported-format" | "no-text-layer" | "parse-failed";
+  reason?: "unsupported-format" | "no-text-layer" | "encrypted" | "parse-failed";
 }
 
 /**
@@ -49,9 +49,20 @@ export async function extractDocumentText(buffer: Buffer, mimeType: string): Pro
         return { text: null, reason: "unsupported-format" };
     }
   } catch (error) {
+    // Payslips are deliberately encrypted with the employee's National ID so
+    // only they can open them. Indexing their contents would undo that, so an
+    // encrypted file keeps its metadata chunk only — and is reported as such
+    // rather than as a parser bug.
+    if (isPasswordProtected(error)) return { text: null, reason: "encrypted" };
     logger.warn(`Text extraction failed for ${mimeType}: ${(error as Error).message}`);
     return { text: null, reason: "parse-failed" };
   }
+}
+
+/** pdf.js raises PasswordException ("No password given") for an encrypted PDF. */
+function isPasswordProtected(error: unknown): boolean {
+  const e = error as { name?: string; message?: string };
+  return e?.name === "PasswordException" || /password/i.test(e?.message ?? "");
 }
 
 function finish(text: string): ExtractionResult {

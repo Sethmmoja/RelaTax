@@ -8,9 +8,9 @@ import { extractDocumentText } from "../src/documents/document-text-extractor";
  * real files rather than mocking the extraction away.
  */
 
-async function makePdf(lines: string[]): Promise<Buffer> {
+async function makePdf(lines: string[], options: PDFKit.PDFDocumentOptions = {}): Promise<Buffer> {
   const chunks: Buffer[] = [];
-  const doc = new PDFDocument();
+  const doc = new PDFDocument(options);
   doc.on("data", (c: Buffer) => chunks.push(c));
   const done = new Promise<void>((resolve) => doc.on("end", () => resolve()));
   for (const line of lines) doc.text(line).moveDown(0.5);
@@ -30,6 +30,16 @@ async function makeXlsx(): Promise<Buffer> {
 }
 
 describe("extractDocumentText", () => {
+  it("leaves a password-protected PDF unread and says so", async () => {
+    // Same protection PayslipPdfService applies (userPassword = National ID).
+    const pdf = await makePdf(["Net pay KES 62,000"], { userPassword: "12345678" });
+
+    const { text, reason } = await extractDocumentText(pdf, "application/pdf");
+
+    expect(text).toBeNull();
+    expect(reason).toBe("encrypted");
+  });
+
   it("reads the text layer of a PDF", async () => {
     const pdf = await makePdf(["VAT Return June 2026", "Output VAT KES 48,250", "Net payable KES 36,250"]);
 
