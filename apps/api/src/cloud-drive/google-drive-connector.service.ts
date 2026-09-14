@@ -3,7 +3,10 @@ import { google, drive_v3 } from "googleapis";
 import {
   CloudDriveBusinessContext,
   CloudDriveConnector,
+  CloudDriveCredentials,
   CloudDriveFile,
+  CloudDriveListing,
+  CloudDriveReauthorizationRequiredError,
   CloudDriveTokens
 } from "./cloud-drive-connector";
 
@@ -120,16 +123,40 @@ export class GoogleDriveConnector extends CloudDriveConnector {
     };
   }
 
-  async listFiles(folderId: string, accessToken: string): Promise<CloudDriveFile[]> {
+  async listFiles(folderId: string, credentials: CloudDriveCredentials): Promise<CloudDriveListing> {
     const client = this.buildClient();
-    client.setCredentials({ access_token: accessToken });
+    // All three matter: with only the access token, google-auth-library has
+    // nothing to refresh with and every call after the first hour fails with
+    // "Invalid Credentials". With the refresh token and expiry it refreshes
+    // transparently and announces the new token on the "tokens" event.
+    client.setCredentials({
+      access_token: credentials.accessToken,
+      refresh_token: credentials.refreshToken,
+      expiry_date: credentials.expiresAt.getTime()
+    });
+    let refreshedCredentials: CloudDriveCredentials | undefined;
+    client.on("tokens", (tokens) => {
+      if (!tokens.access_token) return;
+      refreshedCredentials = {
+        accessToken: tokens.access_token,
+        // Google only re-issues a refresh token on consent, so keep the one we have.
+        refreshToken: tokens.refresh_token ?? credentials.refreshToken,
+        expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : new Date(Date.now() + 60 * 60 * 1000)
+      };
+    });
     const drive = google.drive({ version: "v3", auth: client });
 
-    const { data } = await drive.files.list({
-      q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false`,
-      fields: "files(id, name, mimeType)",
-      spaces: "drive"
-    });
+    let data: drive_v3.Schema$FileList;
+    try {
+      ({ data } = await drive.files.list({
+        q: `'${escapeDriveQueryValue(folderId)}' in parents and trashed = false`,
+        fields: "files(id, name, mimeType)",
+        spaces: "drive"
+      }));
+    } catch (error) {
+      if (isRefreshTokenRejected(error)) throw new CloudDriveReauthorizationRequiredError("Google Drive");
+      throw error;
+    }
 
     const files: CloudDriveFile[] = [];
     for (const file of data.files ?? []) {
@@ -164,6 +191,17 @@ export class GoogleDriveConnector extends CloudDriveConnector {
       }
     }
 
-    return files;
+    return { files, refreshedCredentials };
   }
+}
+
+/**
+ * `invalid_grant` is Google's answer when the refresh token itself is dead:
+ * the user revoked access, the password changed, or — for an OAuth app still
+ * in "Testing" — the token passed its 7-day lifetime. No retry helps; the
+ * business has to be reconnected, so it's surfaced as its own error type.
+ */
+function isRefreshTokenRejected(error: unknown): boolean {
+  const e = error as { message?: string; response?: { data?: { error?: string } } };
+  return e?.response?.data?.error === "invalid_grant" || /invalid_grant/i.test(e?.message ?? "");
 }

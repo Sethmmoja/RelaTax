@@ -87,7 +87,17 @@ export class CloudDriveService {
     });
 
     try {
-      const files = await this.connector.listFiles(connection.folderId ?? "", connection.accessToken);
+      const { files, refreshedCredentials } = await this.connector.listFiles(connection.folderId ?? "", {
+        accessToken: connection.accessToken,
+        refreshToken: connection.refreshToken,
+        expiresAt: connection.expiresAt
+      });
+      // Persist a refreshed access token straight away, before the (possibly
+      // long) upload loop: if that loop fails, the next run still starts with
+      // a token that works instead of refreshing again.
+      if (refreshedCredentials) {
+        await this.prisma.cloudDriveConnection.update({ where: { id: connectionId }, data: refreshedCredentials });
+      }
       let imported = 0;
 
       for (const file of files) {

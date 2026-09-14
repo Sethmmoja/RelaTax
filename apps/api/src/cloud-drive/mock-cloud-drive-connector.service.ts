@@ -3,7 +3,9 @@ import { randomUUID } from "crypto";
 import {
   CloudDriveBusinessContext,
   CloudDriveConnector,
+  CloudDriveCredentials,
   CloudDriveFile,
+  CloudDriveListing,
   CloudDriveTokens
 } from "./cloud-drive-connector";
 
@@ -35,7 +37,7 @@ export class MockCloudDriveConnector extends CloudDriveConnector {
     };
   }
 
-  async listFiles(folderId: string, _accessToken: string): Promise<CloudDriveFile[]> {
+  async listFiles(folderId: string, _credentials: CloudDriveCredentials): Promise<CloudDriveListing> {
     // Stable ids per folder so re-imports dedupe correctly.
     const file = (name: string, mimeType: string, body: string): CloudDriveFile => ({
       externalId: `${folderId}:${name}`,
@@ -44,11 +46,13 @@ export class MockCloudDriveConnector extends CloudDriveConnector {
       content: Buffer.from(body)
     });
 
-    return [
-      file("Profit-and-Loss-June-2026.pdf", "application/pdf", "mock P&L report contents"),
-      file("Balance-Sheet-June-2026.pdf", "application/pdf", "mock balance sheet contents"),
-      file("VAT-Return-June-2026.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "mock VAT workbook"),
-      file("Bank-Statement-June-2026.pdf", "application/pdf", "mock supporting document")
-    ];
+    return {
+      files: [
+        file("Profit-and-Loss-June-2026.pdf", "application/pdf", "mock P&L report contents"),
+        file("Balance-Sheet-June-2026.pdf", "application/pdf", "mock balance sheet contents"),
+        file("VAT-Return-June-2026.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "mock VAT workbook"),
+        file("Bank-Statement-June-2026.pdf", "application/pdf", "mock supporting document")
+      ]
+    };
   }
 }

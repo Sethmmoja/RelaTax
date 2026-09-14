@@ -6,12 +6,35 @@ export interface CloudDriveFile {
   content: Buffer;
 }
 
-export interface CloudDriveTokens {
+/** What a connection stores to call the provider on the business's behalf. */
+export interface CloudDriveCredentials {
   accessToken: string;
   refreshToken: string;
   expiresAt: Date;
+}
+
+export interface CloudDriveTokens extends CloudDriveCredentials {
   folderId: string;
   folderName: string;
+}
+
+export interface CloudDriveListing {
+  files: CloudDriveFile[];
+  /**
+   * Set when the provider issued a new access token during the call. Access
+   * tokens are short-lived (Google's last an hour), so anything that reads
+   * from the drive must be prepared to persist these — otherwise every import
+   * after the first hour fails with "Invalid Credentials".
+   */
+  refreshedCredentials?: CloudDriveCredentials;
+}
+
+/** Thrown when the refresh token itself is rejected — only a reconnect can fix that. */
+export class CloudDriveReauthorizationRequiredError extends Error {
+  constructor(provider: string) {
+    super(`${provider} access has expired or been revoked. Reconnect this business's drive to continue importing.`);
+    this.name = "CloudDriveReauthorizationRequiredError";
+  }
 }
 
 /**
@@ -34,5 +57,5 @@ export abstract class CloudDriveConnector {
   abstract get provider(): string;
   abstract getAuthorizationUrl(businessId: string): string;
   abstract exchangeCodeForTokens(code: string, business: CloudDriveBusinessContext): Promise<CloudDriveTokens>;
-  abstract listFiles(folderId: string, accessToken: string): Promise<CloudDriveFile[]>;
+  abstract listFiles(folderId: string, credentials: CloudDriveCredentials): Promise<CloudDriveListing>;
 }
