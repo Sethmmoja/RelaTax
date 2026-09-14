@@ -1,11 +1,13 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { Queue } from "bullmq";
 import { randomUUID } from "crypto";
 import { Prisma } from "@prisma/client";
 import { DocumentCategory, NotificationChannel, NotificationType, ReportType } from "@relatax/types";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "./storage/storage.service";
-import { AiIndexingService } from "../ai/ai-indexing.service";
 import { NotificationsService } from "../notifications/notifications.service";
+import { DOCUMENT_INDEXING_QUEUE, DocumentIndexingJob } from "./document-indexing.processor";
 
 export interface UploadDocumentInput {
   businessId: string;
@@ -27,12 +29,33 @@ export interface UploadDocumentInput {
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
+
   constructor(
     private prisma: PrismaService,
     private storage: StorageService,
-    private aiIndexing: AiIndexingService,
-    private notifications: NotificationsService
+    private notifications: NotificationsService,
+    @InjectQueue(DOCUMENT_INDEXING_QUEUE) private indexingQueue: Queue<DocumentIndexingJob>
   ) {}
+
+  /**
+   * Hands the document to the indexing worker, which extracts its text and
+   * (re)builds its chunks. Never allowed to fail the caller: an upload that
+   * succeeded is still a success if Redis is briefly unavailable — the
+   * document just isn't searchable until the next re-index.
+   */
+  async enqueueIndexing(documentId: string): Promise<void> {
+    try {
+      // The jobId is deliberately unique per call, not per document: BullMQ
+      // silently ignores an add whose jobId already exists, so a stable id would
+      // drop a replace that lands while the upload's job is still queued — and
+      // the new file would never be indexed. The processor wipes and rebuilds,
+      // so running twice is harmless; the later run simply wins.
+      await this.indexingQueue.add("index", { documentId }, { jobId: `index-${documentId}-${Date.now()}` });
+    } catch (error) {
+      this.logger.warn(`Could not enqueue indexing for document ${documentId}: ${(error as Error).message}`);
+    }
+  }
 
   async upload(input: UploadDocumentInput) {
     // The client-supplied filename must never be used as a raw path segment —
@@ -61,7 +84,7 @@ export class DocumentsService {
       include: { period: true }
     });
 
-    await this.aiIndexing.indexDocument(document.id).catch(() => undefined);
+    await this.enqueueIndexing(document.id);
 
     const notifyChannels = input.notifyChannels ?? [NotificationChannel.PORTAL, NotificationChannel.WHATSAPP];
     if (notifyChannels.length > 0) {
@@ -229,11 +252,13 @@ export class DocumentsService {
       include: { period: true }
     });
 
+    // The old file's chunks are cleared here so the assistant never cites a
+    // version that no longer exists; the worker rebuilds them from the new file.
     await Promise.all([
       this.storage.delete(document.storageKey),
       this.prisma.knowledgeBaseChunk.deleteMany({ where: { sourceType: "document", sourceRef: document.id } })
     ]);
-    await this.aiIndexing.indexDocument(document.id).catch(() => undefined);
+    await this.enqueueIndexing(document.id);
     await this.logAccess(document.id, replacedById, "REPLACE");
 
     return updated;

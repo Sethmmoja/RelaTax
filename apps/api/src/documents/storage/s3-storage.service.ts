@@ -50,6 +50,13 @@ export class S3StorageService extends StorageService {
     );
   }
 
+  async download(key: string): Promise<Buffer> {
+    const { Body } = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+    if (!Body) throw new Error(`Storage object ${key} has no body`);
+    // The SDK returns a stream; uploads are capped at 25 MB so buffering is bounded.
+    return Buffer.from(await Body.transformToByteArray());
+  }
+
   async delete(key: string): Promise<void> {
     await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key }));
   }

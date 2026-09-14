@@ -30,4 +30,16 @@ export class KnowledgeBaseController {
   remove(@Param("id") id: string) {
     return this.aiIndexing.deleteChunk(id);
   }
+
+  /**
+   * Recomputes every chunk's vector. Run after any change to the embedding
+   * function; otherwise stored vectors and query vectors disagree and
+   * retrieval quietly degrades. Restricted beyond the controller default:
+   * it rewrites every row and is only needed by whoever changed the code.
+   */
+  @Roles(RoleName.SUPER_ADMIN)
+  @Post("reembed")
+  async reembed() {
+    return { reembedded: await this.aiIndexing.reembedAllChunks() };
+  }
 }
