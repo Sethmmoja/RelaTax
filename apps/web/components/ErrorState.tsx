@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@relatax/ui";
+import { reportClientError } from "../lib/error-reporter";
 
 interface ErrorStateProps {
   error: Error & { digest?: string };
@@ -20,9 +21,9 @@ interface ErrorStateProps {
  */
 export function ErrorState({ error, reset, homeHref, homeLabel }: ErrorStateProps) {
   useEffect(() => {
-    // Client-side reporting hook: the API reports to Sentry when configured;
-    // the browser side stays on the console until a DSN is wired here too.
     console.error(error);
+    // Forwarded through the API to the same Sentry project as server errors.
+    reportClientError(error, "error-boundary", { digest: error.digest });
   }, [error]);
 
   return (

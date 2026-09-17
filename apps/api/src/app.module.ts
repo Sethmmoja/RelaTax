@@ -29,6 +29,7 @@ import { InvoicingModule } from "./invoicing/invoicing.module";
 import { PayrollModule } from "./payroll/payroll.module";
 import { CatalogModule } from "./catalog/catalog.module";
 import { PosModule } from "./pos/pos.module";
+import { MonitoringModule } from "./monitoring/monitoring.module";
 
 @Module({
   imports: [
@@ -55,7 +56,8 @@ import { PosModule } from "./pos/pos.module";
     InvoicingModule,
     PayrollModule,
     CatalogModule,
-    PosModule
+    PosModule,
+    MonitoringModule
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

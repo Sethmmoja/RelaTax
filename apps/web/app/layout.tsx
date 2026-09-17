@@ -5,6 +5,7 @@ import { ThemeProvider } from "../lib/theme-provider";
 import { AuthProvider } from "../lib/auth-context";
 import { OG_IMAGE, SITE_NAME, SITE_TAGLINE, SITE_URL } from "../lib/seo";
 import { OrganizationSchema } from "../components/seo/StructuredData";
+import { ErrorReporting } from "../components/ErrorReporting";
 import "./globals.css";
 
 // Only the weights the UI actually sets. Every listed weight/style is a
@@ -80,6 +81,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={`${plexSans.variable} ${plexMono.variable} ${zillaSlab.variable} font-sans antialiased`}>
         <OrganizationSchema />
+        <ErrorReporting />
         <ThemeProvider>
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
