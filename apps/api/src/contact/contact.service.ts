@@ -22,7 +22,17 @@ export class ContactService {
   ) {}
 
   async create(dto: CreateContactInquiryDto) {
-    const inquiry = await this.prisma.contactInquiry.create({ data: dto });
+    const { website, formRenderedAt, ...fields } = dto;
+
+    // Spam is answered exactly like a real inquiry — same status, same body,
+    // same latency — so a bot author gets no signal about which field gave
+    // them away. Nothing is stored and nobody is notified.
+    if (isProbablySpam(website, formRenderedAt)) {
+      this.logger.warn(`Dropped a contact inquiry that tripped the bot trap (${website ? "honeypot" : "time"})`);
+      return { received: true };
+    }
+
+    const inquiry = await this.prisma.contactInquiry.create({ data: fields });
 
     const summary = [
       `New contact inquiry from ${dto.name} (${dto.company})`,
@@ -71,4 +81,16 @@ export class ContactService {
   async listAll() {
     return this.prisma.contactInquiry.findMany({ orderBy: { createdAt: "desc" } });
   }
+}
+
+const MIN_HUMAN_FILL_MS = 3_000;
+
+function isProbablySpam(honeypot: string | undefined, renderedAt: number | undefined): boolean {
+  if (honeypot && honeypot.trim().length > 0) return true;
+  // Only trust a plausible timestamp: a bot that omits or fakes the field
+  // still has to clear the honeypot, and an honest old tab isn't punished.
+  if (typeof renderedAt === "number" && renderedAt > 0 && renderedAt <= Date.now()) {
+    return Date.now() - renderedAt < MIN_HUMAN_FILL_MS;
+  }
+  return false;
 }

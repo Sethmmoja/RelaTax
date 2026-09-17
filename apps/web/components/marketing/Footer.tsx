@@ -19,6 +19,7 @@ export function Footer() {
               <li><Link href="/services" className="hover:text-primary">Services</Link></li>
               <li><Link href="/about" className="hover:text-primary">About</Link></li>
               <li><Link href="/contact" className="hover:text-primary">Contact</Link></li>
+              <li><Link href="/resources" className="hover:text-primary">Resources</Link></li>
             </ul>
           </div>
           <div>
@@ -45,7 +46,10 @@ export function Footer() {
         </div>
         <div className="mt-10 flex flex-col gap-2 border-t border-border pt-6 sm:flex-row sm:justify-between">
           <p>&copy; {new Date().getFullYear()} RelaTax. All rights reserved.</p>
-          <p>Built for people who value precision.</p>
+          <p className="flex flex-wrap gap-x-5 gap-y-1">
+            <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
+            <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
+          </p>
         </div>
       </div>
     </footer>

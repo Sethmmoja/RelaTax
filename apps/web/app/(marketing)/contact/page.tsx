@@ -28,6 +28,10 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Bot traps, checked server-side: a field people never see, and when the
+  // form was rendered (a submission seconds after render wasn't typed).
+  const [website, setWebsite] = useState("");
+  const [formRenderedAt] = useState(() => Date.now());
 
   function toggleService(service: string) {
     setServices((prev) => (prev.includes(service) ? prev.filter((s) => s !== service) : [...prev, service]));
@@ -52,7 +56,9 @@ export default function ContactPage() {
           company,
           sector,
           services,
-          message: message || undefined
+          message: message || undefined,
+          website: website || undefined,
+          formRenderedAt
         })
       });
       if (!res.ok) throw new Error("Could not send your message. Please try again.");
@@ -82,19 +88,39 @@ export default function ContactPage() {
             Thanks — we've received your message and will get back to you shortly.
           </p>
         ) : (
-          <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          <form onSubmit={handleSubmit} className="relative mt-8 space-y-5">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Input placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} required />
-              <Input type="email" placeholder="Email address" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              <Input placeholder="Phone (optional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              <Input placeholder="Company name" value={company} onChange={(e) => setCompany(e.target.value)} required />
+              <Field label="Your name" htmlFor="contact-name">
+                <Input id="contact-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              </Field>
+              <Field label="Email address" htmlFor="contact-email">
+                <Input id="contact-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+              </Field>
+              <Field label="Phone" hint="optional" htmlFor="contact-phone">
+                <Input id="contact-phone" type="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </Field>
+              <Field label="Company name" htmlFor="contact-company">
+                <Input id="contact-company" autoComplete="organization" value={company} onChange={(e) => setCompany(e.target.value)} required />
+              </Field>
             </div>
-            <Input
-              placeholder="Sector / type of business (e.g. retail, logistics, NGO)"
-              value={sector}
-              onChange={(e) => setSector(e.target.value)}
-              required
-            />
+            <Field label="Sector / type of business" hint="e.g. retail, logistics, NGO" htmlFor="contact-sector">
+              <Input id="contact-sector" value={sector} onChange={(e) => setSector(e.target.value)} required />
+            </Field>
+
+            {/* Honeypot: hidden from people (and from the accessibility tree),
+                filled in by form-stuffing bots. */}
+            <div className="absolute -left-[10000px] top-auto h-px w-px overflow-hidden" aria-hidden="true">
+              <label htmlFor="contact-website">Website</label>
+              <input
+                id="contact-website"
+                name="website"
+                type="text"
+                tabIndex={-1}
+                autoComplete="off"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+              />
+            </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">Which services are you interested in?</label>
@@ -108,15 +134,21 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <textarea
-              placeholder="Anything else we should know? (optional)"
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              rows={4}
-              className="w-full rounded border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
+            <Field label="Anything else we should know?" hint="optional" htmlFor="contact-message">
+              <textarea
+                id="contact-message"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                rows={4}
+                className="w-full rounded border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </Field>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
             <Button type="submit" size="lg" disabled={submitting}>
               {submitting ? "Sending…" : "Send message"}
             </Button>
@@ -136,5 +168,22 @@ export default function ContactPage() {
         </div>
       </div>
     </section>
+  );
+}
+
+/**
+ * A visible label above each control. Placeholder-only fields lose their
+ * name the moment someone starts typing, and assistive tech doesn't treat a
+ * placeholder as a label.
+ */
+function Field({ label, hint, htmlFor, children }: { label: string; hint?: string; htmlFor: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium">
+        {label}
+        {hint ? <span className="ml-1.5 font-normal text-muted-foreground">({hint})</span> : null}
+      </label>
+      {children}
+    </div>
   );
 }
