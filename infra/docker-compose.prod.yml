@@ -13,10 +13,26 @@
 
 name: relatax-prod
 
+# Every service gets the same two guards. Log rotation, because the default
+# json-file driver keeps every line forever and a chatty API fills a 100 GB
+# disk in months. A memory ceiling, because on a single 6 GB box one process
+# leaking memory otherwise takes the database down with it — better that the
+# one container restarts. Ceilings are generous: none is near normal usage.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in prod.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in prod.env}
@@ -32,6 +48,11 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 384M
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
@@ -50,6 +71,11 @@ services:
     # 4 GB box, where a local Next.js build can exhaust memory.
     image: ${API_IMAGE:-relatax-api:latest}
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
     env_file:
       - prod.env
     environment:
@@ -84,6 +110,11 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:?set NEXT_PUBLIC_API_URL in prod.env}
     image: ${WEB_IMAGE:-relatax-web:latest}
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
     depends_on:
       api:
         condition: service_healthy
@@ -101,6 +132,11 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    logging: *logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
     ports:
       - "80:80"
       - "443:443"
