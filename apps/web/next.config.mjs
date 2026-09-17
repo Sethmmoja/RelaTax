@@ -24,16 +24,14 @@ const nextConfig = {
   // Browser-side hardening that belongs to the app, not the proxy: Caddy
   // adds HSTS/nosniff/referrer in production, but nothing in the stack
   // stops another site framing the portal (clickjacking) or lets us declare
-  // which device APIs the pages never use. Kept out of a full CSP on purpose —
-  // Next's inline hydration scripts need nonces for that, which is a separate
-  // piece of work with its own failure modes.
+  // which device APIs the pages never use. The Content-Security-Policy
+  // itself is set per request in middleware.ts, because it carries a nonce.
   async headers() {
     return [
       {
         source: "/(.*)",
         headers: [
           { key: "X-Frame-Options", value: "DENY" },
-          { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" }

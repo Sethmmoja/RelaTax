@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { ThemeProvider } from "../lib/theme-provider";
@@ -76,13 +77,17 @@ export const metadata: Metadata = {
   category: "finance"
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Set by middleware for the Content Security Policy. Reading request
+  // headers is what opts every page into per-request rendering — required,
+  // since a nonce baked into prebuilt HTML would be no nonce at all.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${plexSans.variable} ${plexMono.variable} ${zillaSlab.variable} font-sans antialiased`}>
         <OrganizationSchema />
         <ErrorReporting />
-        <ThemeProvider>
+        <ThemeProvider nonce={nonce}>
           <AuthProvider>{children}</AuthProvider>
         </ThemeProvider>
       </body>

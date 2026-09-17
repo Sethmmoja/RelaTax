@@ -22,9 +22,11 @@ function ClearStaleThemeOverride() {
   return null;
 }
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children, nonce }: { children: ReactNode; nonce?: string }) {
   return (
-    <NextThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    // next-themes injects an inline script that applies the theme before
+    // first paint; the CSP only allows it with the request's nonce.
+    <NextThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
       <ClearStaleThemeOverride />
       {children}
     </NextThemeProvider>
