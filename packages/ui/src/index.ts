@@ -6,4 +6,5 @@ export * from "./components/DataTable";
 export * from "./components/Input";
 export * from "./components/PasswordInput";
 export * from "./lib/utils";
+export * from "./lib/format";
 export * from "./lib/gsap";

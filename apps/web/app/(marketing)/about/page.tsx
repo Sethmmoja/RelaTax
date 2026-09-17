@@ -30,7 +30,7 @@ const team = [
 export const metadata = pageMetadata({
   // The root layout appends "| RelaTax"; repeating the brand here would
   // render "About RelaTax | RelaTax".
-  title: "About Us",
+  title: "About Our Fractional Accounting Team in Kenya",
   description:
     "ACCA and CPA-certified accountants delivering IFRS reporting, tax compliance and payroll across Kenya and East Africa. Senior leads on every engagement.",
   path: "/about"

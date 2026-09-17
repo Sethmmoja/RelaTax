@@ -8,6 +8,12 @@ export interface DataTableColumn<T> {
   header: string;
   cell: (row: T) => ReactNode;
   className?: string;
+  /**
+   * Figures: right-aligned in tabular mono so the digits stack, header
+   * included — a right-aligned column under a left-aligned header reads as
+   * two columns.
+   */
+  numeric?: boolean;
 }
 
 export interface DataTableProps<T> {
@@ -54,7 +60,7 @@ export function DataTable<T>({ columns, rows, keyFor, emptyMessage = "No records
         <thead className="bg-muted text-muted-foreground">
           <tr>
             {columns.map((col) => (
-              <th key={col.header} className={cn("px-4 py-3 font-medium", col.className)}>
+              <th key={col.header} scope="col" className={cn("px-4 py-3 font-medium", col.numeric && "text-right", col.className)}>
                 {col.header}
               </th>
             ))}
@@ -64,7 +70,7 @@ export function DataTable<T>({ columns, rows, keyFor, emptyMessage = "No records
           {rows.map((row) => (
             <tr key={keyFor(row)} className="border-t border-border">
               {columns.map((col) => (
-                <td key={col.header} className={cn("px-4 py-3", col.className)}>
+                <td key={col.header} className={cn("px-4 py-3", col.numeric && "text-right tabular-figures whitespace-nowrap", col.className)}>
                   {col.cell(row)}
                 </td>
               ))}

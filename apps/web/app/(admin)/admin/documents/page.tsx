@@ -177,7 +177,7 @@ export default function AdminDocumentsPage() {
                 <button className="text-primary hover:underline" onClick={() => handleView(d)}>View</button>
                 <button className="text-primary hover:underline" onClick={() => handleDownload(d.id)}>Download</button>
                 <button
-                  className="text-muted-foreground hover:text-destructive"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded text-muted-foreground transition-[color,background-color] duration-150 hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   onClick={() => handleDelete(d.id)}
                   aria-label="Delete document"
                   title="Delete"

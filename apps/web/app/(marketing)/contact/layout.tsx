@@ -9,7 +9,7 @@ import { Breadcrumbs } from "../../../components/marketing/Breadcrumbs";
 export const metadata = pageMetadata({
   // The root layout appends "| RelaTax"; repeating the brand here would
   // render "Contact RelaTax | RelaTax".
-  title: "Contact Us",
+  title: "Contact a Fractional Accountant in Nairobi",
   description:
     "Talk to RelaTax about accounting, tax compliance or payroll for your business. Nairobi-based, serving Kenya and East Africa.",
   path: "/contact"

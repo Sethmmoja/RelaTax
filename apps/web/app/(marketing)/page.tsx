@@ -83,7 +83,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <Reveal>
             <h2 className="font-serif text-3xl md:text-5xl">
-              The expertise of a full accounting team. <span className="italic text-primary/80 dark:text-primary">A fraction of the cost.</span>
+              The expertise of a full accounting team. <span className="italic text-primary dark:text-primary">A fraction of the cost.</span>
             </h2>
             <p className="mt-4 max-w-2xl text-muted-foreground">
               Hiring full-time accountants is slow and expensive. With RelaTax, you get expert guidance, hands-on
@@ -122,7 +122,7 @@ export default function HomePage() {
         <div className="mx-auto grid max-w-5xl grid-cols-2 gap-8 text-center md:grid-cols-4">
           {stats.map((stat) => (
             <div key={stat.label} className="stat-item">
-              <p className="tabular-figures text-3xl text-primary/80 dark:text-primary md:text-4xl">{stat.value}</p>
+              <p className="tabular-figures text-3xl text-primary dark:text-primary md:text-4xl">{stat.value}</p>
               <p className="mt-1 text-xs text-muted-foreground">{stat.label}</p>
             </div>
           ))}

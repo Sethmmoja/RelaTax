@@ -18,7 +18,7 @@ export function DocumentPreview({ mimeType, url }: { mimeType: string; url: stri
       <img
         src={url}
         alt="Document preview"
-        className="max-h-[70vh] w-full rounded-lg border border-border object-contain"
+        className="img-framed max-h-[70vh] w-full rounded-lg object-contain"
       />
     );
   }

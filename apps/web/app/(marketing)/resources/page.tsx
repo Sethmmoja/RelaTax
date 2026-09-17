@@ -6,7 +6,7 @@ import { pageMetadata } from "../../../lib/seo";
 import { Breadcrumbs } from "../../../components/marketing/Breadcrumbs";
 
 export const metadata = pageMetadata({
-  title: "Tax & Accounting Resources",
+  title: "Kenya Tax & Accounting Guides for SMEs",
   description:
     "Plain-language guides to Kenyan tax and accounting — VAT, PAYE, eTIMS and the concepts that matter most for growing businesses.",
   path: "/resources"

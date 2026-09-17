@@ -31,6 +31,12 @@ async function bootstrap() {
   );
   app.setGlobalPrefix("api/v1", { exclude: ["api/docs"] });
 
+  // The OpenAPI explorer enumerates every route, DTO and role annotation —
+  // a free map of the attack surface. In production it sits behind the same
+  // ops credentials as the queue dashboard instead of being public.
+  if (process.env.NODE_ENV === "production") {
+    app.getHttpAdapter().getInstance().use(["/api/docs", "/api/docs-json", "/api/docs-yaml"], basicAuth);
+  }
   const config = new DocumentBuilder()
     .setTitle("RelaTax API")
     .setDescription("Single backend powering the RelaTax website, client portal, admin portal, and WhatsApp AI assistant.")

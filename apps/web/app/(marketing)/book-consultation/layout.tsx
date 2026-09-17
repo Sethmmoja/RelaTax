@@ -4,7 +4,7 @@ import { pageMetadata } from "../../../lib/seo";
 // Next only reads that export from server components, so it lives in the
 // route's layout instead.
 export const metadata = pageMetadata({
-  title: "Book a Consultation",
+  title: "Book a Free Accounting Consultation",
   description:
     "Book a free consultation with a senior RelaTax accountant to scope your accounting, tax and payroll needs.",
   path: "/book-consultation"

@@ -73,10 +73,30 @@ export const envSchema = z.object({
     .transform((v) => parseInt(v, 10))
 });
 
+/**
+ * Defaults that are fine on a laptop become holes on a public server. Rather
+ * than trusting a deploy checklist, refuse to boot in production while any of
+ * them is still in place — a crash at startup is loud; a guessable ops
+ * password is not.
+ */
+const productionSchema = envSchema.superRefine((env, ctx) => {
+  if (process.env.NODE_ENV !== "production") return;
+  const fail = (path: string, message: string) => ctx.addIssue({ code: z.ZodIssueCode.custom, path: [path], message });
+
+  if (env.BULL_BOARD_PASS === "change-me") fail("BULL_BOARD_PASS", "must be changed from the default in production");
+  if (env.WHATSAPP_TRANSPORT === "meta" && env.WHATSAPP_VERIFY_TOKEN === "dev-verify-token") {
+    fail("WHATSAPP_VERIFY_TOKEN", "must be changed from the default when the Meta transport is enabled");
+  }
+  if (env.JWT_ACCESS_SECRET.length < 32) fail("JWT_ACCESS_SECRET", "must be at least 32 characters in production");
+  if (env.JWT_REFRESH_SECRET.length < 32) fail("JWT_REFRESH_SECRET", "must be at least 32 characters in production");
+  if (env.JWT_ACCESS_SECRET === env.JWT_REFRESH_SECRET) fail("JWT_REFRESH_SECRET", "must differ from JWT_ACCESS_SECRET");
+  if (!process.env.APP_URL) fail("APP_URL", "required in production so CORS is restricted to the real frontend origin");
+});
+
 export type Env = z.infer<typeof envSchema>;
 
 export function validateEnv(config: Record<string, unknown>): Env {
-  const parsed = envSchema.safeParse(config);
+  const parsed = productionSchema.safeParse(config);
   if (!parsed.success) {
     throw new Error(
       `Invalid environment configuration:\n${parsed.error.issues

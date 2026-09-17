@@ -22,3 +22,6 @@ infra/certs/*
 !infra/certs/README.md
 .claude/settings.local.json
 *.tsbuildinfo
+
+# /brag video output (tooling + renders, never committed)
+brag-output*/

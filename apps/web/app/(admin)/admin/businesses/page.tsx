@@ -342,7 +342,7 @@ export default function BusinessesPage() {
                 >
                   {b.logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={b.logoUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                    <img src={b.logoUrl} alt="" width={32} height={32} className="img-framed h-8 w-8 rounded-full object-cover" />
                   ) : (
                     <span
                       className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white"

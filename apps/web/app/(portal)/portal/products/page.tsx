@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Button, DataTable, Input, Modal } from "@relatax/ui";
+import { Button, DataTable, Input, Modal, formatKes } from "@relatax/ui";
 import { apiFetch } from "../../../../lib/api-client";
 import { useBusiness } from "../../../../lib/business-context";
 
@@ -135,7 +135,7 @@ export default function PortalProductsPage() {
         columns={[
           { header: "Name", cell: (p: Product) => p.name },
           { header: "SKU", cell: (p: Product) => p.sku ?? "—" },
-          { header: "Price", cell: (p: Product) => `KES ${Number(p.unitPrice).toLocaleString()}` },
+          { header: "Price", numeric: true, cell: (p: Product) => formatKes(p.unitPrice) },
           { header: "Tax %", cell: (p: Product) => `${Number(p.taxRate)}%` },
           {
             header: "Stock",

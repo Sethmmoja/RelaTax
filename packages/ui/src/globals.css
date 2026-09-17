@@ -18,9 +18,15 @@
   --foreground: 18% 0.03 50;
   --card: 100% 0 0;
   --card-foreground: 18% 0.03 50;
-  --primary: 68% 0.16 40;
+  /* Terracotta at 56% lightness: the lightest shade that keeps the
+     primary-foreground text on filled buttons at AA (4.85:1) and the colour
+     itself legible as small text on paper (4.78:1). The previous 68% read as
+     2.98:1 — every "Book a consult" button on the site failed WCAG. */
+  --primary: 56% 0.15 40;
   --primary-foreground: 99% 0.005 70;
-  --primary-glow: 78% 0.14 50;
+  /* Hover goes darker, not lighter: a lighter hover would drop the button's
+     text contrast exactly when the user is looking at it. */
+  --primary-glow: 50% 0.15 40;
   --secondary: 22% 0.03 50;
   --secondary-foreground: 98.5% 0.005 70;
   --accent: 94% 0.04 55;
@@ -32,10 +38,13 @@
   --destructive-foreground: 99% 0.005 70;
 
   --radius: 0.25rem;
-  --shadow-soft: 0 1px 2px oklab(18% 0.02 50 / 0.06), 0 2px 6px oklab(18% 0.02 50 / 0.05);
-  --shadow-elegant: 0 8px 30px -10px oklab(18% 0.02 50 / 0.22), 0 2px 8px oklab(18% 0.02 50 / 0.08);
+  /* Ink-tinted shadows. These were written as oklab() with oklch arguments;
+     a "b" of 50 is far outside oklab's ±0.4 range, and the out-of-gamut colour
+     clipped to a green halo around every card. */
+  --shadow-soft: 0 1px 2px oklch(18% 0.02 50 / 0.06), 0 2px 6px oklch(18% 0.02 50 / 0.05);
+  --shadow-elegant: 0 8px 30px -10px oklch(18% 0.02 50 / 0.22), 0 2px 8px oklch(18% 0.02 50 / 0.08);
   --gradient-hero: linear-gradient(135deg, oklch(99% 0.01 70) 0%, oklch(95% 0.05 55) 100%);
-  --gradient-primary: linear-gradient(135deg, oklch(68% 0.16 40), oklch(78% 0.14 50));
+  --gradient-primary: linear-gradient(135deg, oklch(56% 0.15 40), oklch(66% 0.14 48));
 }
 
 .dark {
@@ -74,6 +83,23 @@
   h3,
   h4 {
     @apply font-serif font-normal;
+    /* Headings never orphan a single word onto their last line. */
+    text-wrap: balance;
+  }
+  p,
+  li,
+  dd {
+    text-wrap: pretty;
+  }
+  /* Raster images (client logos, document previews) get a neutral hairline
+     so their edges don't dissolve into a same-coloured surface. Opt-in, not
+     global: the wordmark is a transparent PNG and a box around it is wrong. */
+  .img-framed {
+    outline: 1px solid rgb(0 0 0 / 0.08);
+    outline-offset: -1px;
+  }
+  .dark .img-framed {
+    outline-color: rgb(255 255 255 / 0.08);
   }
   /* Financial figures render in tabular mono, like a printed statement —
      applied via .font-mono / .tabular-figures utility, not globally, so
@@ -105,4 +131,18 @@
 }
 .preserve-3d {
   transform-style: preserve-3d;
+}
+
+/* Motion is a preference, not a requirement. GSAP entrances already gate on
+   matchMedia; this closes the gap for every CSS transition and keyframe so a
+   user who asked for reduced motion gets a still interface everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

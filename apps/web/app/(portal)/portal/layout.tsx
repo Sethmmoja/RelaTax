@@ -106,7 +106,7 @@ function PortalChrome({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             {activeBusiness?.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={activeBusiness.logoUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+              <img src={activeBusiness.logoUrl} alt="" width={32} height={32} className="img-framed h-8 w-8 rounded-full object-cover" />
             ) : (
               <span
                 className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium text-white"

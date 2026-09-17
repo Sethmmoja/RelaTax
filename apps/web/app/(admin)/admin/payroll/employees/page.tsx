@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { Button, DataTable, Input, Modal } from "@relatax/ui";
+import { Button, DataTable, Input, Modal, formatKes } from "@relatax/ui";
 import { apiFetch, getToken } from "../../../../../lib/api-client";
 
 interface Business {
@@ -190,7 +190,7 @@ export default function PayrollEmployeesPage() {
           { header: "Name", cell: (e: Employee) => e.name },
           { header: "Email", cell: (e: Employee) => e.email },
           { header: "National ID", cell: (e: Employee) => e.nationalId ?? "—" },
-          { header: "Basic salary", cell: (e: Employee) => `KES ${Number(e.basicSalary).toLocaleString()}` },
+          { header: "Basic salary", numeric: true, cell: (e: Employee) => formatKes(e.basicSalary) },
           {
             header: "Status",
             cell: (e: Employee) => (

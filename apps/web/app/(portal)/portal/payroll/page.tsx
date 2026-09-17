@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { DataTable } from "@relatax/ui";
+import { DataTable, formatKes } from "@relatax/ui";
 import { apiFetch } from "../../../../lib/api-client";
 import { useBusiness } from "../../../../lib/business-context";
 
@@ -44,8 +44,8 @@ export default function PortalPayrollPage() {
         columns={[
           { header: "Period", cell: (r: PayrollSummary) => r.periodLabel },
           { header: "Employees", cell: (r: PayrollSummary) => r.employeeCount },
-          { header: "Gross pay", cell: (r: PayrollSummary) => `KES ${r.totalGrossPay.toLocaleString()}` },
-          { header: "Net pay", cell: (r: PayrollSummary) => `KES ${r.totalNetPay.toLocaleString()}` },
+          { header: "Gross pay", numeric: true, cell: (r: PayrollSummary) => formatKes(r.totalGrossPay) },
+          { header: "Net pay", numeric: true, cell: (r: PayrollSummary) => formatKes(r.totalNetPay) },
           { header: "Distributed", cell: (r: PayrollSummary) => (r.runAt ? new Date(r.runAt).toLocaleDateString() : "—") },
           {
             header: "",

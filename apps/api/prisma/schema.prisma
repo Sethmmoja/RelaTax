@@ -23,25 +23,25 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  emailVerifiedAt         DateTime?
-  emailVerificationToken  String?   @unique
+  emailVerifiedAt            DateTime?
+  emailVerificationToken     String?   @unique
   emailVerificationExpiresAt DateTime?
-  passwordResetToken      String?   @unique
-  passwordResetExpiresAt  DateTime?
-  mfaEnabled              Boolean   @default(false)
-  googleId                String?   @unique
+  passwordResetToken         String?   @unique
+  passwordResetExpiresAt     DateTime?
+  mfaEnabled                 Boolean   @default(false)
+  googleId                   String?   @unique
 
-  businessMemberships BusinessMember[]
-  roleAssignments     RoleAssignment[]
-  businessRequests    BusinessRequest[]
-  auditLogs           AuditLog[]
-  notifications       Notification[]
-  whatsAppSession     WhatsAppSession?
-  sessions            UserSession[]
-  staffAssignments    StaffBusinessAssignment[]
-  invoicesCreated        Invoice[]
-  invoiceRequestsMade    InvoiceRequest[] @relation("InvoiceRequestsMade")
-  invoiceRequestsReviewed InvoiceRequest[] @relation("InvoiceRequestsReviewed")
+  businessMemberships     BusinessMember[]
+  roleAssignments         RoleAssignment[]
+  businessRequests        BusinessRequest[]
+  auditLogs               AuditLog[]
+  notifications           Notification[]
+  whatsAppSession         WhatsAppSession?
+  sessions                UserSession[]
+  staffAssignments        StaffBusinessAssignment[]
+  invoicesCreated         Invoice[]
+  invoiceRequestsMade     InvoiceRequest[]          @relation("InvoiceRequestsMade")
+  invoiceRequestsReviewed InvoiceRequest[]          @relation("InvoiceRequestsReviewed")
 
   @@map("users")
 }
@@ -57,6 +57,7 @@ model UserSession {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("user_sessions")
 }
 
@@ -115,26 +116,26 @@ model Business {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
-  members               BusinessMember[]
-  documents              Document[]
-  reportPeriods          ReportPeriod[]
-  taxRecords             TaxRecord[]
-  invoices               Invoice[]
-  invoiceRequests        InvoiceRequest[]
-  receipts               Receipt[]
-  notifications          Notification[]
-  requests               BusinessRequest[]
-  quickBooksConnection   QuickBooksConnection?
-  cloudDriveConnection   CloudDriveConnection?
-  whatsAppSessions       WhatsAppSession[]
-  knowledgeBaseChunks    KnowledgeBaseChunk[]
-  syncLogs               SyncLog[]
-  staffAssignments       StaffBusinessAssignment[]
-  employees              Employee[]
-  payrollRuns            PayrollRun[]
-  products               Product[]
-  sales                  Sale[]
-  mpesaConnection        MpesaConnection?
+  members              BusinessMember[]
+  documents            Document[]
+  reportPeriods        ReportPeriod[]
+  taxRecords           TaxRecord[]
+  invoices             Invoice[]
+  invoiceRequests      InvoiceRequest[]
+  receipts             Receipt[]
+  notifications        Notification[]
+  requests             BusinessRequest[]
+  quickBooksConnection QuickBooksConnection?
+  cloudDriveConnection CloudDriveConnection?
+  whatsAppSessions     WhatsAppSession[]
+  knowledgeBaseChunks  KnowledgeBaseChunk[]
+  syncLogs             SyncLog[]
+  staffAssignments     StaffBusinessAssignment[]
+  employees            Employee[]
+  payrollRuns          PayrollRun[]
+  products             Product[]
+  sales                Sale[]
+  mpesaConnection      MpesaConnection?
 
   @@map("businesses")
 }
@@ -156,6 +157,7 @@ model BusinessMember {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([userId, businessId])
+  @@index([businessId])
   @@map("business_members")
 }
 
@@ -175,10 +177,13 @@ model StaffBusinessAssignment {
   business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
   @@unique([userId, businessId])
+  @@index([businessId])
   @@map("staff_business_assignments")
 }
 
-/** A public marketing-site "Contact us" submission — no account required. */
+/**
+ * A public marketing-site "Contact us" submission — no account required.
+ */
 model ContactInquiry {
   id        String   @id @default(cuid())
   name      String
@@ -194,17 +199,18 @@ model ContactInquiry {
 }
 
 model BusinessRequest {
-  id               String                @id @default(cuid())
+  id                String                @id @default(cuid())
   requestedByUserId String
-  notes            String?
-  status           BusinessRequestStatus @default(PENDING)
-  createdBusinessId String?              @unique
-  createdAt        DateTime              @default(now())
-  resolvedAt       DateTime?
+  notes             String?
+  status            BusinessRequestStatus @default(PENDING)
+  createdBusinessId String?               @unique
+  createdAt         DateTime              @default(now())
+  resolvedAt        DateTime?
 
-  requestedBy    User      @relation(fields: [requestedByUserId], references: [id])
+  requestedBy     User      @relation(fields: [requestedByUserId], references: [id])
   createdBusiness Business? @relation(fields: [createdBusinessId], references: [id])
 
+  @@index([requestedByUserId])
   @@map("business_requests")
 }
 
@@ -219,18 +225,18 @@ enum BusinessRequestStatus {
 // ---------------------------------------------------------------------------
 
 model Document {
-  id           String           @id @default(cuid())
-  businessId   String
-  category     DocumentCategory
-  reportType   ReportType?
-  periodId     String?
-  originalName String
-  mimeType     String
-  sizeBytes    Int
-  storageKey   String
-  uploadedById String
-  externalFileId String?        @unique
-  createdAt    DateTime         @default(now())
+  id             String           @id @default(cuid())
+  businessId     String
+  category       DocumentCategory
+  reportType     ReportType?
+  periodId       String?
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  storageKey     String
+  uploadedById   String
+  externalFileId String?          @unique
+  createdAt      DateTime         @default(now())
 
   business Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
   period   ReportPeriod? @relation(fields: [periodId], references: [id])
@@ -243,6 +249,8 @@ model Document {
   sale             Sale?
   payrollRun       PayrollRun?
 
+  @@index([businessId, createdAt])
+  @@index([periodId])
   @@map("documents")
 }
 
@@ -269,11 +277,12 @@ model ReportPeriod {
   endDate    DateTime
   createdAt  DateTime @default(now())
 
-  business Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  reports  FinancialReport[]
-  taxes    TaxRecord[]
+  business  Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  reports   FinancialReport[]
+  taxes     TaxRecord[]
   documents Document[]
 
+  @@index([businessId])
   @@map("report_periods")
 }
 
@@ -288,6 +297,7 @@ model FinancialReport {
   period   ReportPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
   document Document?    @relation(fields: [documentId], references: [id])
 
+  @@index([periodId])
   @@map("financial_reports")
 }
 
@@ -327,6 +337,8 @@ model TaxRecord {
   business Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
   period   ReportPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
 
+  @@index([businessId])
+  @@index([periodId])
   @@map("tax_records")
 }
 
@@ -357,26 +369,27 @@ enum TaxStatus {
  * the Invoice below and delivers it to the client.
  */
 model InvoiceRequest {
-  id               String               @id @default(cuid())
-  businessId       String
+  id                String               @id @default(cuid())
+  businessId        String
   requestedByUserId String
-  customerName     String
-  customerKraPin   String?
-  itemDescription  String
-  amount           Decimal
-  currency         String               @default("KES")
-  status           InvoiceRequestStatus @default(PENDING_REVIEW)
-  invoiceId        String?              @unique
-  rejectionReason  String?
-  reviewedById     String?
-  reviewedAt       DateTime?
-  createdAt        DateTime             @default(now())
+  customerName      String
+  customerKraPin    String?
+  itemDescription   String
+  amount            Decimal
+  currency          String               @default("KES")
+  status            InvoiceRequestStatus @default(PENDING_REVIEW)
+  invoiceId         String?              @unique
+  rejectionReason   String?
+  reviewedById      String?
+  reviewedAt        DateTime?
+  createdAt         DateTime             @default(now())
 
-  business    Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  requestedBy User      @relation("InvoiceRequestsMade", fields: [requestedByUserId], references: [id])
-  reviewedBy  User?     @relation("InvoiceRequestsReviewed", fields: [reviewedById], references: [id])
-  invoice     Invoice?  @relation(fields: [invoiceId], references: [id])
+  business    Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  requestedBy User     @relation("InvoiceRequestsMade", fields: [requestedByUserId], references: [id])
+  reviewedBy  User?    @relation("InvoiceRequestsReviewed", fields: [reviewedById], references: [id])
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id])
 
+  @@index([businessId])
   @@map("invoice_requests")
 }
 
@@ -414,6 +427,8 @@ model Invoice {
   lineItems InvoiceLineItem[]
   request   InvoiceRequest?
 
+  @@index([businessId, createdAt])
+  @@index([createdById])
   @@map("invoices")
 }
 
@@ -435,6 +450,7 @@ model InvoiceLineItem {
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@index([invoiceId])
   @@map("invoice_line_items")
 }
 
@@ -449,6 +465,7 @@ model Receipt {
   business Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
   document Document? @relation(fields: [documentId], references: [id])
 
+  @@index([businessId])
   @@map("receipts")
 }
 
@@ -457,20 +474,22 @@ model Receipt {
 // ---------------------------------------------------------------------------
 
 model Notification {
-  id         String               @id @default(cuid())
-  businessId String?
-  userId     String?
-  type       NotificationType
-  channels   NotificationChannel[]
-  title      String
-  body       String
-  readAt     DateTime?
+  id           String                @id @default(cuid())
+  businessId   String?
+  userId       String?
+  type         NotificationType
+  channels     NotificationChannel[]
+  title        String
+  body         String
+  readAt       DateTime?
   scheduledFor DateTime?
-  createdAt  DateTime             @default(now())
+  createdAt    DateTime              @default(now())
 
   business Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
   user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([businessId, readAt])
+  @@index([userId])
   @@map("notifications")
 }
 
@@ -499,6 +518,8 @@ model AuditLog {
 
   user User? @relation(fields: [userId], references: [id])
 
+  @@index([userId])
+  @@index([createdAt])
   @@map("audit_logs")
 }
 
@@ -507,21 +528,22 @@ model AuditLog {
 // ---------------------------------------------------------------------------
 
 model WhatsAppSession {
-  id              String   @id @default(cuid())
-  phone           String   @unique
-  userId          String?  @unique
+  id               String    @id @default(cuid())
+  phone            String    @unique
+  userId           String?   @unique
   activeBusinessId String?
-  state           String   @default("AWAITING_PHONE")
-  context         Json     @default("{}")
-  otpCode         String?
-  otpExpiresAt    DateTime?
-  expiresAt       DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  state            String    @default("AWAITING_PHONE")
+  context          Json      @default("{}")
+  otpCode          String?
+  otpExpiresAt     DateTime?
+  expiresAt        DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   user           User?     @relation(fields: [userId], references: [id])
   activeBusiness Business? @relation(fields: [activeBusinessId], references: [id])
 
+  @@index([activeBusinessId])
   @@map("whatsapp_sessions")
 }
 
@@ -557,8 +579,9 @@ model SyncLog {
   quickBooksConnId String?
 
   business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  quickBooksConnection  QuickBooksConnection? @relation(fields: [quickBooksConnId], references: [id])
+  quickBooksConnection QuickBooksConnection? @relation(fields: [quickBooksConnId], references: [id])
 
+  @@index([businessId, startedAt])
   @@map("sync_logs")
 }
 
@@ -619,7 +642,9 @@ enum EmployeeStatus {
   INACTIVE
 }
 
-/** Contracts, P9s, ID copies — whatever supporting paperwork the accountant adds for an employee. */
+/**
+ * Contracts, P9s, ID copies — whatever supporting paperwork the accountant adds for an employee.
+ */
 model EmployeeDocument {
   id           String   @id @default(cuid())
   employeeId   String
@@ -631,6 +656,7 @@ model EmployeeDocument {
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   document Document @relation(fields: [documentId], references: [id])
 
+  @@index([employeeId])
   @@map("employee_documents")
 }
 
@@ -648,6 +674,7 @@ model PayrollRun {
   payslips       Payslip[]
   reportDocument Document? @relation(fields: [reportDocumentId], references: [id])
 
+  @@index([businessId])
   @@map("payroll_runs")
 }
 
@@ -682,6 +709,8 @@ model Payslip {
   employee   Employee   @relation(fields: [employeeId], references: [id])
   document   Document?  @relation(fields: [documentId], references: [id])
 
+  @@index([payrollRunId])
+  @@index([employeeId])
   @@map("payslips")
 }
 
@@ -725,6 +754,7 @@ model StockMovement {
 
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
+  @@index([productId])
   @@map("stock_movements")
 }
 
@@ -756,6 +786,7 @@ model Sale {
   document  Document?      @relation(fields: [documentId], references: [id])
   lineItems SaleLineItem[]
 
+  @@index([businessId, createdAt])
   @@map("sales")
 }
 
@@ -783,10 +814,14 @@ model SaleLineItem {
   sale    Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   product Product? @relation(fields: [productId], references: [id])
 
+  @@index([saleId])
+  @@index([productId])
   @@map("sale_line_items")
 }
 
-/** Per-business Daraja app credentials — never returned in full by any GET endpoint. */
+/**
+ * Per-business Daraja app credentials — never returned in full by any GET endpoint.
+ */
 model MpesaConnection {
   id             String   @id @default(cuid())
   businessId     String   @unique
@@ -807,15 +842,17 @@ model MpesaConnection {
 // ---------------------------------------------------------------------------
 
 model KnowledgeBaseChunk {
-  id         String                  @id @default(cuid())
+  id         String                      @id @default(cuid())
   businessId String?
   sourceType String
   sourceRef  String?
   content    String
   embedding  Unsupported("vector(1536)")
-  createdAt  DateTime                @default(now())
+  createdAt  DateTime                    @default(now())
 
   business Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
+  @@index([businessId])
+  @@index([sourceType, sourceRef])
   @@map("knowledge_base_chunks")
 }

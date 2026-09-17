@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Badge, DataTable } from "@relatax/ui";
+import { Badge, DataTable, formatAmount } from "@relatax/ui";
 import { apiFetch } from "../../../../lib/api-client";
 import { useBusiness } from "../../../../lib/business-context";
 
@@ -68,8 +68,8 @@ export default function TaxesPage() {
             { header: "Type", cell: (t: TaxRecord) => t.taxType.replace(/_/g, " ") },
             { header: "Period", cell: (t: TaxRecord) => t.period.label },
             { header: "Due date", cell: (t: TaxRecord) => new Date(t.dueDate).toLocaleDateString() },
-            { header: "Amount due (KES)", cell: (t: TaxRecord) => Number(t.amountDue).toLocaleString() },
-            { header: "Amount paid (KES)", cell: (t: TaxRecord) => Number(t.amountPaid).toLocaleString() },
+            { header: "Amount due (KES)", numeric: true, cell: (t: TaxRecord) => formatAmount(t.amountDue) },
+            { header: "Amount paid (KES)", numeric: true, cell: (t: TaxRecord) => formatAmount(t.amountPaid) },
             {
               header: "Status",
               cell: (t: TaxRecord) => <Badge variant={t.status === "PAID" ? "stamp" : "stamp-destructive"}>{t.status}</Badge>

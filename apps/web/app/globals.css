@@ -1,1 +1,41 @@
 @import "@relatax/ui/src/globals.css";
+
+/* Hero entrance in CSS, not GSAP. The hero copy is the page's largest
+   contentful paint; hiding it until React hydrates and GSAP runs pushed
+   mobile LCP to ~4 s (89% "render delay"). A keyframe starts the moment
+   the stylesheet applies — before any JavaScript — so the text is on screen
+   at first paint and simply rises into place. GSAP keeps the scroll-linked
+   depth recede, which has no first-paint cost. Timing and easing match the
+   old timeline (0.5 s, 0.65 s stagger 0.12) so the choreography is unchanged.
+   `--d` is each element's start delay. The global reduced-motion rule
+   collapses the duration, so users who asked for stillness get the final
+   state immediately. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(var(--rise, 16px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes hero-stage-in {
+  from {
+    opacity: 0;
+    transform: translate3d(16px, 20px, 40px) rotateY(-10deg) rotateX(3deg);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotateY(0) rotateX(0);
+  }
+}
+.hero-rise {
+  animation: hero-rise 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0s);
+}
+.hero-stage-in {
+  transform-style: preserve-3d;
+  animation: hero-stage-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 0.45s;
+}
