@@ -2,12 +2,12 @@ packages:
   - "apps/*"
   - "packages/*"
 overrides:
-  multer: ">=2.2.0"
-  nodemailer: ">=8.0.4"
+  multer: ">=2.4.0"
+  nodemailer: ">=10.0.10"
   js-yaml: ">=4.3.1"
   body-parser: ">=1.20.6"
   lodash: ">=4.17.24"
-  sharp: ">=0.35.0"
+  sharp: ">=0.35.4"
   postcss: ">=8.5.12"
   # Reached via exceljs -> archiver/unzipper -> glob -> minimatch. The 1.x and
   # 2.x lines are both in the tree and each had its own advisory; per-major
