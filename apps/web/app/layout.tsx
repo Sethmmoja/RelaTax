@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { ThemeProvider } from "../lib/theme-provider";
 import { AuthProvider } from "../lib/auth-context";
@@ -9,27 +8,36 @@ import { OrganizationSchema } from "../components/seo/StructuredData";
 import { ErrorReporting } from "../components/ErrorReporting";
 import "./globals.css";
 
-// Only the weights the UI actually sets. Every listed weight/style is a
-// separate preloaded font file on first paint, so an unused 700 costs LCP on
-// every page for nothing — the heaviest weight in use anywhere is 600.
-const plexSans = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex-sans"
+// Every typeface is self-hosted from app/fonts (all three are OFL). This
+// isn't only about weights — with next/font/google the *build* fetches font
+// files from Google, and a build that can't reach Google (CI runners are
+// rate-limited by Google Fonts from time to time; a locked-down VPS may be
+// offline) fails outright. A build must not depend on a third party.
+//
+// Latin subsets only, matching what next/font/google preloaded. Only the
+// weights the UI sets: the heaviest weight in use anywhere is 600, and italic
+// is only ever the regular serif weight — each extra file is a preload on
+// every page's first paint.
+const plexSans = localFont({
+  // One variable file covers 400–600.
+  src: [{ path: "./fonts/ibm-plex-sans-latin.woff2", weight: "400 600", style: "normal" }],
+  variable: "--font-plex-sans",
+  display: "swap",
+  adjustFontFallback: "Arial"
 });
-const plexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  weight: ["400", "500"],
+const plexMono = localFont({
+  src: [
+    { path: "./fonts/ibm-plex-mono-400.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/ibm-plex-mono-500.woff2", weight: "500", style: "normal" }
+  ],
   variable: "--font-plex-mono",
+  display: "swap",
   // Figures only (statement rows, tables) — never in the first viewport of a
   // marketing page, so it must not compete with the display and body faces
   // for bandwidth before first paint. Loaded on first use instead.
-  preload: false
+  preload: false,
+  adjustFontFallback: "Arial"
 });
-// Zilla Slab is self-hosted (OFL, latin subset) because next/font/google can
-// only take a weight list × a style list: asking for 400/500/600 plus italic
-// downloads six files, and the site sets italic at the regular weight only.
-// Four files instead of six, and every one is used above the fold.
 const zillaSlab = localFont({
   src: [
     { path: "./fonts/zilla-slab-400.woff2", weight: "400", style: "normal" },
@@ -39,8 +47,6 @@ const zillaSlab = localFont({
   ],
   variable: "--font-zilla-slab",
   display: "swap",
-  // The metric-compatible fallback next/font/google computed for Zilla Slab,
-  // so text doesn't reflow when the real face swaps in.
   adjustFontFallback: "Times New Roman"
 });
 
